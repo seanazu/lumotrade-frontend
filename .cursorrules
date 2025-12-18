@@ -1,0 +1,131 @@
+# LumoTrade Development Rules
+
+## Critical ML Development Rules
+
+### 1. Data Leakage Prevention
+- NEVER train on data that includes the test period
+- ALWAYS use temporal splits: train on past, test on future
+- If testing on 2024-2025, train ONLY on data before 2024
+- If claiming "2022 accuracy", model must NOT have seen 2022 during training
+- Document the exact date ranges: "Train: 2013-2021, Test: 2022-2025"
+
+### 2. Honest Reporting
+- ALWAYS distinguish between IN-SAMPLE (trained on) and OUT-OF-SAMPLE (never seen) results
+- IN-SAMPLE results are NOT predictive of future performance
+- When reporting accuracy, specify: "Out-of-sample: X% (N trades)"
+- Never claim high accuracy without verifying it's truly out-of-sample
+
+### 3. Feature Engineering
+- Test features INDIVIDUALLY before combining them
+- Use ablation studies: baseline → add one feature → measure impact
+- If a feature hurts performance, REMOVE it
+- More features ≠ better model (often worse due to noise)
+- Document which features help and which hurt
+
+### 4. Model Training Verification
+- ALWAYS show actual training output with timestamps
+- Verify training happened by checking model files were created/modified
+- Show data split sizes: "Train: 1500, Val: 200, Test: 300"
+- Print class distribution: "UP: 60%, DOWN: 40%"
+
+### 5. Realistic Expectations
+- Market prediction accuracy above 60-70% is exceptional
+- Claims of 90%+ accuracy are almost always data leakage
+- DOWN prediction is harder than UP in bull markets
+- Model performance degrades over time - plan for retraining
+
+### 6. Backtesting Rules
+- Use OPEN-TO-OPEN returns for realistic execution (not close-to-close)
+- Account for overnight gaps
+- Don't use same-day data for predictions you'd make at market open
+- Include transaction costs in profit calculations
+
+## Code Quality Rules
+
+### 7. Warning Suppression
+- Suppress warnings properly at the top of files:
+```python
+import warnings
+warnings.filterwarnings('ignore', category=FutureWarning, module='sklearn')
+warnings.filterwarnings('ignore', category=UserWarning, module='lightgbm')
+```
+- Don't use blanket `warnings.filterwarnings('ignore')` without specifying category
+
+### 8. Model Organization
+- Keep separate models in separate files (alpha_core.py, alpha_down.py)
+- Each model file should be self-contained with its own:
+  - Feature building
+  - Training logic
+  - Evaluation metrics
+  - Save/load functions
+
+### 9. API Keys and Secrets
+- Store API keys in .env file
+- Never commit API keys to git
+- Use `python-dotenv` to load environment variables
+
+### 10. Testing Protocol
+- Before claiming "improvement", run the SAME test on BOTH old and new versions
+- Use the same train/test split for fair comparison
+- Document the comparison: "Baseline: 40%, New: 45% (+5%)"
+
+## Project-Specific Rules
+
+### 11. Feature Categories That Work
+Best DOWN prediction features (tested):
+- Breadth (IWM/SPY momentum): +7.7% in 2022
+- Dollar (UUP): +3.3% in 2022
+- Stochastic Oscillator: +2.6% in 2022
+- Credit spreads (HYG/LQD)
+- VIX term structure
+
+Features that DON'T help:
+- MACD (-3.3% in 2022)
+- Days since high (-1.8%)
+- ATR (-1.1%)
+
+### 12. Model Architecture
+- Use ensemble of LightGBM + CatBoost + XGBoost
+- Require 3/3 agreement for high-confidence trades
+- Use shallow trees (depth=3) with slow learning rate (0.02)
+- Use class_weight='balanced' for imbalanced classes
+
+### 13. Hyperparameters That Work
+```python
+N_ESTIMATORS = 400
+MAX_DEPTH = 3
+LEARNING_RATE = 0.02
+```
+
+### 14. File Structure
+```
+ml-backend/
+├── src/core/prediction/
+│   ├── alpha_core.py      # Main UP/DOWN model
+│   ├── alpha_down.py      # Specialized DOWN model
+│   └── __init__.py        # Exports
+├── models/
+│   ├── alpha_core/model.pkl
+│   └── alpha_down/model.pkl
+└── training/
+    └── train_production.py
+```
+
+## Communication Rules
+
+### 15. When Reporting Results
+- Always state the test period
+- Always state if it's in-sample or out-of-sample
+- Always show number of trades, not just accuracy
+- Format: "OUT-OF-SAMPLE 2024-2025: UP 70% (200 trades), DOWN 40% (30 trades)"
+
+### 16. When Something Doesn't Work
+- Revert changes that hurt performance
+- Document what was tried and why it failed
+- Don't keep trying the same approach expecting different results
+
+### 17. Before Making Claims
+- Verify with actual code execution
+- Show the output that proves the claim
+- If you haven't run training, don't claim training happened
+
