@@ -59,6 +59,32 @@ function getTodayET(): { date: string; time: string } {
   };
 }
 
+/**
+ * Validate data point
+ */
+function isValidDataPoint(item: any): boolean {
+  if (!item) return false;
+  if (!item.date || typeof item.date !== "string") return false;
+  if (item.close === null || item.close === undefined) return false;
+  if (isNaN(parseFloat(item.close))) return false;
+  if (parseFloat(item.close) <= 0) return false;
+  return true;
+}
+
+/**
+ * Remove duplicate timestamps
+ */
+function deduplicateByTimestamp(points: IntradayPoint[]): IntradayPoint[] {
+  const seen = new Set<string>();
+  return points.filter((point) => {
+    if (seen.has(point.timestamp)) {
+      return false;
+    }
+    seen.add(point.timestamp);
+    return true;
+  });
+}
+
 async function fetchFMPIntraday(
   symbol: string,
   limit: number = 390
@@ -71,7 +97,12 @@ async function fetchFMPIntraday(
 
   try {
     const url = `https://financialmodelingprep.com/api/v3/historical-chart/1min/${symbol}?apikey=${apiKey}`;
-    const response = await fetch(url, { next: { revalidate: 60 } });
+    const response = await fetch(url, {
+      next: { revalidate: 60 },
+      headers: {
+        Accept: "application/json",
+      },
+    });
 
     if (!response.ok) {
       console.error(`FMP API error for ${symbol}: ${response.statusText}`);
@@ -80,11 +111,20 @@ async function fetchFMPIntraday(
 
     const data = await response.json();
     if (!Array.isArray(data) || data.length === 0) {
+      console.warn(`No intraday data returned for ${symbol}`);
       return [];
     }
 
-    // Take most recent data points
-    const recentData = data.slice(0, limit);
+    // Filter out invalid data points
+    const validData = data.filter(isValidDataPoint);
+
+    if (validData.length === 0) {
+      console.warn(`All data points invalid for ${symbol}`);
+      return [];
+    }
+
+    // Take most recent valid data points
+    const recentData = validData.slice(0, limit);
 
     // Convert to our format
     const points: IntradayPoint[] = recentData.map((item: any) => {
@@ -99,8 +139,19 @@ async function fetchFMPIntraday(
       };
     });
 
-    // Sort chronologically (FMP returns newest first)
-    return points.reverse();
+    // Remove duplicates
+    const uniquePoints = deduplicateByTimestamp(points);
+
+    // Sort chronologically (FMP returns newest first, so reverse)
+    const sortedPoints = uniquePoints.sort((a, b) => {
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    });
+
+    console.log(
+      `✓ Fetched ${sortedPoints.length} valid intraday points for ${symbol}`
+    );
+
+    return sortedPoints;
   } catch (error) {
     console.error(`Error fetching intraday data for ${symbol}:`, error);
     return [];
@@ -125,6 +176,17 @@ export async function GET(request: NextRequest) {
 
     const symbols = symbolsParam.split(",").map((s) => s.trim());
     const limit = limitParam ? parseInt(limitParam) : 390;
+
+    // Validate limit
+    if (isNaN(limit) || limit < 1 || limit > 1000) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid limit parameter. Must be between 1 and 1000",
+        },
+        { status: 400 }
+      );
+    }
 
     const { date, time } = getTodayET();
 
@@ -152,20 +214,42 @@ export async function GET(request: NextRequest) {
 
     const data = await Promise.all(dataPromises);
 
-    return NextResponse.json({
+    // Calculate data quality metrics
+    const totalPoints = data.reduce(
+      (sum, series) => sum + series.points.length,
+      0
+    );
+    const avgPointsPerSymbol = totalPoints / data.length;
+
+    console.log(
+      `📈 Intraday data summary: ${symbols.length} symbols, ${totalPoints} total points, ${avgPointsPerSymbol.toFixed(0)} avg per symbol`
+    );
+
+    // Return response with caching headers
+    const response = NextResponse.json({
       success: true,
       data,
+      source: "fmp",
+      cached: false,
       timestamp: Date.now(),
     });
+
+    // Set cache headers (cache for 1 minute)
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=30"
+    );
+
+    return response;
   } catch (error) {
     console.error("Error in intraday API:", error);
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : "Internal server error",
+        timestamp: Date.now(),
       },
       { status: 500 }
     );
   }
 }
-

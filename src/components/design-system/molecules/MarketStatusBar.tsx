@@ -1,6 +1,7 @@
 "use client";
 
 import { TrendingUp, Activity, Zap, ArrowUpRight } from "lucide-react";
+import { useMarketMetrics } from "@/hooks/useMarketMetrics";
 
 interface MarketStatusBarProps {
   isMarketOpen?: boolean;
@@ -15,12 +16,20 @@ interface MarketStatusBarProps {
  * Displays key market indicators in a horizontal scrollable bar
  */
 export function MarketStatusBar({
-  isMarketOpen = true,
-  sentiment = "Bullish",
-  volume = "Above Avg",
-  volatility = "Low",
-  trend = "Upward",
-}: MarketStatusBarProps) {
+  isMarketOpen: isMarketOpenProp,
+  sentiment: sentimentProp,
+  volume: volumeProp,
+  volatility: volatilityProp,
+  trend: trendProp,
+}: MarketStatusBarProps = {}) {
+  const { data: metrics } = useMarketMetrics();
+
+  // Use live data if available, otherwise fall back to props or defaults
+  const isMarketOpen = metrics?.isMarketOpen ?? isMarketOpenProp ?? true;
+  const sentiment = metrics?.sentiment ?? sentimentProp ?? "Neutral";
+  const volume = metrics?.volume ?? volumeProp ?? "Normal";
+  const volatility = metrics?.volatility ?? volatilityProp ?? "Low";
+  const trend = metrics?.trend ?? trendProp ?? "Sideways";
   return (
     <div className="bg-card border border-border rounded-xl p-3 shadow-sm">
       <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
@@ -77,4 +86,3 @@ export function MarketStatusBar({
     </div>
   );
 }
-

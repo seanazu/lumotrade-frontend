@@ -20,6 +20,7 @@ import {
   PageHeader,
 } from "@/components/design-system/molecules";
 import { useTodayPrediction } from "@/hooks/useMLBackend";
+import { useMarketStatus } from "@/hooks/useMarketStatus";
 
 interface MarketOverviewPageProps {
   isAIBriefOpen: boolean;
@@ -32,6 +33,7 @@ function MarketOverviewPage({
 }: MarketOverviewPageProps) {
   const { data: predictions, isLoading: predictionsLoading } =
     useTodayPrediction();
+  const { data: marketStatus } = useMarketStatus();
 
   return (
     <>
@@ -40,8 +42,8 @@ function MarketOverviewPage({
           {/* Page Header */}
           <PageHeader
             title="Market Overview"
-            subtitle="Global markets are open. Volume is up +12% vs 30-day avg."
-            isLive
+            subtitle={marketStatus?.subtitle || "Loading market data..."}
+            isLive={marketStatus?.isOpen}
           />
 
           {/* Market Status Bar */}

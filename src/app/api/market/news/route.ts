@@ -16,35 +16,103 @@ export const dynamic = "force-dynamic";
 // Keywords that indicate macro/market-moving news
 const MACRO_KEYWORDS = [
   // Federal Reserve & Monetary Policy
-  "fed", "federal reserve", "fomc", "powell", "interest rate", "rate cut", "rate hike",
-  "monetary policy", "quantitative", "tapering", "dovish", "hawkish",
+  "fed",
+  "federal reserve",
+  "fomc",
+  "powell",
+  "interest rate",
+  "rate cut",
+  "rate hike",
+  "monetary policy",
+  "quantitative",
+  "tapering",
+  "dovish",
+  "hawkish",
   // Economic Indicators
-  "inflation", "cpi", "ppi", "gdp", "employment", "jobs report", "unemployment",
-  "nonfarm payroll", "retail sales", "consumer spending", "economic growth",
-  "recession", "soft landing", "hard landing",
+  "inflation",
+  "cpi",
+  "ppi",
+  "gdp",
+  "employment",
+  "jobs report",
+  "unemployment",
+  "nonfarm payroll",
+  "retail sales",
+  "consumer spending",
+  "economic growth",
+  "recession",
+  "soft landing",
+  "hard landing",
   // Market-wide
-  "s&p 500", "dow jones", "nasdaq", "russell", "market rally", "market selloff",
-  "bull market", "bear market", "correction", "volatility", "vix",
-  "stock market", "wall street", "trading day",
+  "s&p 500",
+  "dow jones",
+  "nasdaq",
+  "russell",
+  "market rally",
+  "market selloff",
+  "bull market",
+  "bear market",
+  "correction",
+  "volatility",
+  "vix",
+  "stock market",
+  "wall street",
+  "trading day",
   // Treasury & Bonds
-  "treasury", "yield", "bond", "10-year", "2-year", "yield curve", "inversion",
+  "treasury",
+  "yield",
+  "bond",
+  "10-year",
+  "2-year",
+  "yield curve",
+  "inversion",
   // Sectors & Broad Impact
-  "tech sector", "energy sector", "financial sector", "earnings season",
-  "mega cap", "large cap", "sector rotation",
+  "tech sector",
+  "energy sector",
+  "financial sector",
+  "earnings season",
+  "mega cap",
+  "large cap",
+  "sector rotation",
   // Geopolitical & Commodities
-  "oil prices", "crude oil", "opec", "gold", "commodity",
-  "trade war", "tariff", "sanctions", "geopolitical",
+  "oil prices",
+  "crude oil",
+  "opec",
+  "gold",
+  "commodity",
+  "trade war",
+  "tariff",
+  "sanctions",
+  "geopolitical",
   // Central Banks & Global
-  "ecb", "bank of japan", "china economy", "global markets",
-  "emerging markets", "currency", "dollar index",
+  "ecb",
+  "bank of japan",
+  "china economy",
+  "global markets",
+  "emerging markets",
+  "currency",
+  "dollar index",
 ];
 
 // Keywords that indicate company-specific news (to deprioritize)
 const COMPANY_SPECIFIC_KEYWORDS = [
-  "earnings beat", "earnings miss", "quarterly results", "revenue grew",
-  "ceo said", "cfo said", "product launch", "acquisition of",
-  "layoffs at", "hired", "appointed", "partnership with",
-  "lawsuit", "sec investigation", "recall", "upgrade", "downgrade",
+  "earnings beat",
+  "earnings miss",
+  "quarterly results",
+  "revenue grew",
+  "ceo said",
+  "cfo said",
+  "product launch",
+  "acquisition of",
+  "layoffs at",
+  "hired",
+  "appointed",
+  "partnership with",
+  "lawsuit",
+  "sec investigation",
+  "recall",
+  "upgrade",
+  "downgrade",
 ];
 
 /**
@@ -88,10 +156,18 @@ function calculateMacroScore(article: FMPNewsArticle): number {
 }
 
 /**
- * Check if article is macro-relevant
+ * Check if article is macro-relevant and high impact
  */
 function isMacroRelevant(article: FMPNewsArticle): boolean {
-  return calculateMacroScore(article) > 0;
+  // Require minimum score of 10 for relevance (higher threshold)
+  return calculateMacroScore(article) >= 10;
+}
+
+/**
+ * Check if article is high impact (breaking/urgent news)
+ */
+function isHighImpact(article: FMPNewsArticle): boolean {
+  return calculateMacroScore(article) >= 20;
 }
 
 /**
@@ -100,12 +176,12 @@ function isMacroRelevant(article: FMPNewsArticle): boolean {
 function isWithinLast24Hours(article: FMPNewsArticle): boolean {
   const publishedDate = article.publishedDate || article.date;
   if (!publishedDate) return false;
-  
+
   try {
     const published = new Date(publishedDate);
     const now = new Date();
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    
+
     return published >= twentyFourHoursAgo;
   } catch {
     return false;
@@ -117,33 +193,37 @@ function isWithinLast24Hours(article: FMPNewsArticle): boolean {
  */
 function stripHtml(html: string): string {
   if (!html) return "";
-  
-  return html
-    // Remove HTML tags
-    .replace(/<[^>]*>/g, "")
-    // Decode common HTML entities
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, "/")
-    .replace(/&mdash;/g, "—")
-    .replace(/&ndash;/g, "–")
-    .replace(/&hellip;/g, "...")
-    .replace(/&rsquo;/g, "'")
-    .replace(/&lsquo;/g, "'")
-    .replace(/&rdquo;/g, '"')
-    .replace(/&ldquo;/g, '"')
-    // Decode numeric HTML entities
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
-    .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    // Clean up whitespace
-    .replace(/\s+/g, " ")
-    .trim();
+
+  return (
+    html
+      // Remove HTML tags
+      .replace(/<[^>]*>/g, "")
+      // Decode common HTML entities
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&apos;/g, "'")
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x2F;/g, "/")
+      .replace(/&mdash;/g, "—")
+      .replace(/&ndash;/g, "–")
+      .replace(/&hellip;/g, "...")
+      .replace(/&rsquo;/g, "'")
+      .replace(/&lsquo;/g, "'")
+      .replace(/&rdquo;/g, '"')
+      .replace(/&ldquo;/g, '"')
+      // Decode numeric HTML entities
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+      .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      )
+      // Clean up whitespace
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 // Default placeholder images for articles without images
@@ -157,14 +237,18 @@ const DEFAULT_ARTICLE_IMAGES = [
  * Get a consistent default image based on article title (for visual variety)
  */
 function getDefaultImage(title: string): string {
-  const hash = title.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = title
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return DEFAULT_ARTICLE_IMAGES[hash % DEFAULT_ARTICLE_IMAGES.length];
 }
 
 /**
  * Transform FMP article to MarketStory format
  */
-function transformToMarketStory(article: FMPNewsArticle): MarketStory & { macroScore: number } {
+function transformToMarketStory(
+  article: FMPNewsArticle
+): MarketStory & { macroScore: number } {
   const publishedDate = article.publishedDate || article.date;
   const macroScore = calculateMacroScore(article);
 
@@ -173,9 +257,10 @@ function transformToMarketStory(article: FMPNewsArticle): MarketStory & { macroS
   const cleanSummary = stripHtml(article.text || article.content || "");
 
   // Use article image or fall back to default
-  const image = article.image && article.image.trim() 
-    ? article.image 
-    : getDefaultImage(cleanTitle);
+  const image =
+    article.image && article.image.trim()
+      ? article.image
+      : getDefaultImage(cleanTitle);
 
   return {
     title: cleanTitle,
@@ -222,7 +307,9 @@ function generateMarketSummary(stories: MarketStory[]): string {
 
   const bullishCount = stories.filter((s) => s.sentiment === "bullish").length;
   const bearishCount = stories.filter((s) => s.sentiment === "bearish").length;
-  const highPriorityCount = stories.filter((s) => s.importance === "high").length;
+  const highPriorityCount = stories.filter(
+    (s) => s.importance === "high"
+  ).length;
 
   let sentiment = "mixed";
   if (bullishCount > bearishCount * 2) sentiment = "predominantly bullish";
@@ -236,18 +323,23 @@ function generateMarketSummary(stories: MarketStory[]): string {
   // Extract main themes from top stories
   for (const story of topStories) {
     const title = story.title.toLowerCase();
-    if (title.includes("fed") || title.includes("rate")) mainThemes.push("Fed policy");
-    else if (title.includes("inflation") || title.includes("cpi")) mainThemes.push("inflation data");
-    else if (title.includes("jobs") || title.includes("employment")) mainThemes.push("employment");
-    else if (title.includes("market") || title.includes("stocks")) mainThemes.push("market movement");
-    else if (title.includes("oil") || title.includes("energy")) mainThemes.push("energy prices");
-    else if (title.includes("yield") || title.includes("treasury")) mainThemes.push("bond yields");
+    if (title.includes("fed") || title.includes("rate"))
+      mainThemes.push("Fed policy");
+    else if (title.includes("inflation") || title.includes("cpi"))
+      mainThemes.push("inflation data");
+    else if (title.includes("jobs") || title.includes("employment"))
+      mainThemes.push("employment");
+    else if (title.includes("market") || title.includes("stocks"))
+      mainThemes.push("market movement");
+    else if (title.includes("oil") || title.includes("energy"))
+      mainThemes.push("energy prices");
+    else if (title.includes("yield") || title.includes("treasury"))
+      mainThemes.push("bond yields");
   }
 
   const uniqueThemes = [...new Set(mainThemes)].slice(0, 3);
-  const themesText = uniqueThemes.length > 0 
-    ? `Key focus: ${uniqueThemes.join(", ")}. ` 
-    : "";
+  const themesText =
+    uniqueThemes.length > 0 ? `Key focus: ${uniqueThemes.join(", ")}. ` : "";
 
   return `Today's market news is ${sentiment}. ${themesText}${highPriorityCount} major story${highPriorityCount !== 1 ? "s" : ""} could impact trading.`;
 }
@@ -293,11 +385,21 @@ export async function GET(request: NextRequest) {
     // Filter for:
     // 1. Articles from last 24 hours only
     // 2. Macro-relevant news
+    // 3. Prioritize high-impact stories
     const macroStories = uniqueArticles
       .filter(isWithinLast24Hours) // Only last 24 hours
       .filter(isMacroRelevant)
       .map(transformToMarketStory)
-      .sort((a, b) => b.macroScore - a.macroScore) // Sort by macro relevance
+      .sort((a, b) => {
+        // Prioritize high-impact stories first
+        const aIsHighImpact = a.macroScore >= 20 ? 1 : 0;
+        const bIsHighImpact = b.macroScore >= 20 ? 1 : 0;
+        if (aIsHighImpact !== bIsHighImpact) {
+          return bIsHighImpact - aIsHighImpact;
+        }
+        // Then sort by score
+        return b.macroScore - a.macroScore;
+      })
       .slice(0, limit)
       .map(({ macroScore, ...story }) => story); // Remove internal score
 

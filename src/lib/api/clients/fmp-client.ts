@@ -234,10 +234,13 @@ class FMPClient {
         size: limit.toString(),
       });
 
-      const response = await fetchWithRetry<{ content: FMPNewsArticle[] }>(url, {
-        timeout: 8000,
-        retries: 2,
-      });
+      const response = await fetchWithRetry<{ content: FMPNewsArticle[] }>(
+        url,
+        {
+          timeout: 8000,
+          retries: 2,
+        }
+      );
 
       if (response && response.content && Array.isArray(response.content)) {
         // Cache news for 5 minutes
@@ -258,7 +261,10 @@ class FMPClient {
    * @param limit - Number of articles to fetch
    * @returns Array of news articles
    */
-  async getStockNews(symbols: string | string[], limit = 20): Promise<FMPNewsArticle[]> {
+  async getStockNews(
+    symbols: string | string[],
+    limit = 20
+  ): Promise<FMPNewsArticle[]> {
     if (!this.isConfigured()) {
       console.warn("FMP API not configured.");
       return [];
@@ -307,8 +313,10 @@ class FMPClient {
    */
   static mapSentiment(sentiment: string): "bullish" | "bearish" | "neutral" {
     const lower = sentiment?.toLowerCase() || "";
-    if (lower.includes("positive") || lower.includes("bullish")) return "bullish";
-    if (lower.includes("negative") || lower.includes("bearish")) return "bearish";
+    if (lower.includes("positive") || lower.includes("bullish"))
+      return "bullish";
+    if (lower.includes("negative") || lower.includes("bearish"))
+      return "bearish";
     return "neutral";
   }
 
@@ -323,29 +331,312 @@ class FMPClient {
 
     // High priority: Major market-moving events
     const highPriorityKeywords = [
-      "breaking", "urgent", "just in", "fed ", "fomc", "powell",
-      "rate cut", "rate hike", "interest rate",
-      "gdp", "inflation", "cpi", "ppi", "jobs report", "nonfarm",
-      "unemployment", "recession", "economic data",
-      "market crash", "market rally", "circuit breaker",
-      "treasury yield", "yield curve", "inversion",
+      "breaking",
+      "urgent",
+      "just in",
+      "fed ",
+      "fomc",
+      "powell",
+      "rate cut",
+      "rate hike",
+      "interest rate",
+      "gdp",
+      "inflation",
+      "cpi",
+      "ppi",
+      "jobs report",
+      "nonfarm",
+      "unemployment",
+      "recession",
+      "economic data",
+      "market crash",
+      "market rally",
+      "circuit breaker",
+      "treasury yield",
+      "yield curve",
+      "inversion",
     ];
 
     // Medium priority: Broader market context
     const mediumPriorityKeywords = [
-      "s&p 500", "dow jones", "nasdaq", "russell",
-      "wall street", "stock market", "trading day",
-      "sector", "earnings season", "volatility", "vix",
-      "oil prices", "crude", "commodity", "gold",
-      "dollar", "currency", "global markets",
+      "s&p 500",
+      "dow jones",
+      "nasdaq",
+      "russell",
+      "wall street",
+      "stock market",
+      "trading day",
+      "sector",
+      "earnings season",
+      "volatility",
+      "vix",
+      "oil prices",
+      "crude",
+      "commodity",
+      "gold",
+      "dollar",
+      "currency",
+      "global markets",
     ];
 
     if (highPriorityKeywords.some((kw) => title.includes(kw))) return "high";
     if (highPriorityKeywords.some((kw) => combined.includes(kw))) return "high";
-    if (mediumPriorityKeywords.some((kw) => title.includes(kw))) return "medium";
-    if (mediumPriorityKeywords.some((kw) => combined.includes(kw))) return "medium";
-    
+    if (mediumPriorityKeywords.some((kw) => title.includes(kw)))
+      return "medium";
+    if (mediumPriorityKeywords.some((kw) => combined.includes(kw)))
+      return "medium";
+
     return "low";
+  }
+
+  /**
+   * Get technical indicators for a symbol
+   * @param symbol - Stock symbol
+   * @param interval - Time interval (daily, 1min, 5min, etc.)
+   * @returns Technical indicator data
+   */
+  async getTechnicalIndicators(
+    symbol: string,
+    interval: "daily" | "1min" | "5min" | "15min" | "30min" | "1hour" = "daily"
+  ): Promise<{
+    rsi?: number;
+    macd?: { macd: number; signal: number; histogram: number };
+    sma20?: number;
+    sma50?: number;
+    sma200?: number;
+    ema20?: number;
+  } | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
+
+    try {
+      // Fetch multiple indicators in parallel
+      const [rsiData, macdData, sma20Data, sma50Data, sma200Data, ema20Data] =
+        await Promise.all([
+          this.fetchIndicator(symbol, "rsi", interval, 14),
+          this.fetchIndicator(symbol, "macd", interval, 12, 26, 9),
+          this.fetchIndicator(symbol, "sma", interval, 20),
+          this.fetchIndicator(symbol, "sma", interval, 50),
+          this.fetchIndicator(symbol, "sma", interval, 200),
+          this.fetchIndicator(symbol, "ema", interval, 20),
+        ]);
+
+      return {
+        rsi: rsiData?.[0]?.rsi,
+        macd: macdData?.[0]
+          ? {
+              macd: macdData[0].macd,
+              signal: macdData[0].signal,
+              histogram: macdData[0].histogram,
+            }
+          : undefined,
+        sma20: sma20Data?.[0]?.sma,
+        sma50: sma50Data?.[0]?.sma,
+        sma200: sma200Data?.[0]?.sma,
+        ema20: ema20Data?.[0]?.ema,
+      };
+    } catch (error) {
+      console.error(
+        `Error fetching technical indicators for ${symbol}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Internal method to fetch a specific technical indicator
+   */
+  private async fetchIndicator(
+    symbol: string,
+    indicator: string,
+    interval: string,
+    ...periods: number[]
+  ): Promise<any[] | null> {
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      console.warn("FMP rate limit exceeded for technical indicator.");
+      return null;
+    }
+
+    try {
+      const params: Record<string, string> = {
+        apikey: this.apiKey,
+        period: interval,
+      };
+
+      // Add period parameters based on indicator
+      if (periods.length > 0) {
+        if (indicator === "macd") {
+          params.fastPeriod = periods[0]?.toString() || "12";
+          params.slowPeriod = periods[1]?.toString() || "26";
+          params.signalPeriod = periods[2]?.toString() || "9";
+        } else {
+          params.period = periods[0]?.toString() || "14";
+        }
+      }
+
+      const url = buildUrl(
+        `${this.baseUrl}/technical_indicator/${interval}/${symbol}`,
+        params
+      );
+
+      const response = await fetchWithRetry<any[]>(url, {
+        timeout: 5000,
+        retries: 1,
+      });
+
+      return response || null;
+    } catch (error) {
+      console.error(`Error fetching ${indicator} for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Screen stocks based on criteria (momentum, volume, breakouts)
+   * @param criteria - Screening criteria
+   * @returns Array of stock symbols matching criteria
+   */
+  async screenStocks(criteria: {
+    marketCapMoreThan?: number;
+    volumeMoreThan?: number;
+    priceMoreThan?: number;
+    betaMoreThan?: number;
+    limit?: number;
+  }): Promise<any[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
+
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      console.warn("FMP rate limit exceeded for stock screening.");
+      return [];
+    }
+
+    try {
+      const params: Record<string, string> = {
+        apikey: this.apiKey,
+        limit: (criteria.limit || 50).toString(),
+      };
+
+      if (criteria.marketCapMoreThan) {
+        params.marketCapMoreThan = criteria.marketCapMoreThan.toString();
+      }
+      if (criteria.volumeMoreThan) {
+        params.volumeMoreThan = criteria.volumeMoreThan.toString();
+      }
+      if (criteria.priceMoreThan) {
+        params.priceMoreThan = criteria.priceMoreThan.toString();
+      }
+      if (criteria.betaMoreThan) {
+        params.betaMoreThan = criteria.betaMoreThan.toString();
+      }
+
+      const url = buildUrl(`${this.baseUrl}/stock-screener`, params);
+
+      const response = await fetchWithRetry<any[]>(url, {
+        timeout: 10000,
+        retries: 2,
+      });
+
+      return response || [];
+    } catch (error) {
+      console.error("Error screening stocks:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get stock gainers (top performing stocks)
+   */
+  async getGainers(): Promise<FMPQuote[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
+
+    const cacheKey = "fmp:gainers";
+    const cached = cache.get<FMPQuote[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      return cached || [];
+    }
+
+    try {
+      const url = buildUrl(`${this.baseUrl}/stock_market/gainers`, {
+        apikey: this.apiKey,
+      });
+
+      const response = await fetchWithRetry<FMPQuote[]>(url, {
+        timeout: 8000,
+        retries: 2,
+      });
+
+      if (response && Array.isArray(response)) {
+        cache.set(cacheKey, response, 60); // Cache for 1 minute
+        return response;
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Error fetching gainers:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get sector performance
+   */
+  async getSectorPerformance(): Promise<
+    Array<{
+      sector: string;
+      changesPercentage: string;
+    }>
+  > {
+    if (!this.isConfigured()) {
+      return [];
+    }
+
+    const cacheKey = "fmp:sector-performance";
+    const cached =
+      cache.get<Array<{ sector: string; changesPercentage: string }>>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      return cached || [];
+    }
+
+    try {
+      const url = buildUrl(`${this.baseUrl}/sector-performance`, {
+        apikey: this.apiKey,
+      });
+
+      const response = await fetchWithRetry<
+        Array<{ sector: string; changesPercentage: string }>
+      >(url, {
+        timeout: 5000,
+        retries: 2,
+      });
+
+      if (response && Array.isArray(response)) {
+        cache.set(cacheKey, response, 300); // Cache for 5 minutes
+        return response;
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Error fetching sector performance:", error);
+      return [];
+    }
   }
 }
 

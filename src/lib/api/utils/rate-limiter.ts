@@ -3,7 +3,7 @@
  * Prevents exceeding API rate limits
  */
 
-import { RateLimitConfig, RateLimitState } from '../types';
+import { RateLimitConfig, RateLimitState } from "../types";
 
 class RateLimiter {
   private limits = new Map<string, RateLimitState>();
@@ -42,7 +42,7 @@ class RateLimiter {
     if (state.requests.length >= config.maxRequests) {
       const oldestRequest = state.requests[0];
       const waitTime = config.windowMs - (now - oldestRequest);
-      
+
       if (waitTime > 0) {
         console.warn(
           `Rate limit exceeded for ${key}. Wait ${Math.ceil(waitTime / 1000)}s`
@@ -135,5 +135,19 @@ export const rateLimitConfigs = {
     maxRequests: 250,
     windowMs: 24 * 60 * 60 * 1000, // 24 hours
   },
+  // Finnhub: 60 requests per minute for free tier
+  finnhub: {
+    maxRequests: 60,
+    windowMs: 60 * 1000, // 1 minute
+  },
+  // EODHD: Conservative limit (varies by plan)
+  eodhd: {
+    maxRequests: 100,
+    windowMs: 60 * 1000, // 1 minute
+  },
+  // Massive: Conservative limit (varies by plan)
+  massive: {
+    maxRequests: 50,
+    windowMs: 60 * 1000, // 1 minute
+  },
 };
-
