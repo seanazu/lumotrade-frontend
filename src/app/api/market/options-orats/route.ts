@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,35 +28,50 @@ interface ORATSOptionsData {
 
 export async function GET(request: NextRequest) {
   try {
-    const oratsKey = process.env.ORATS_API_KEY;
-    const finnhubKey = process.env.FINNHUB_API_KEY;
+    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "1";
 
-    // If no ORATS key, fall back to Finnhub + estimates
-    if (!oratsKey) {
-      console.warn("ORATS_API_KEY not found, using Finnhub fallback");
-      return await getFinnhubFallback(finnhubKey);
-    }
+    const { data, cache } = await getOrComputeTtlCache({
+      key: "market:options-orats:v1",
+      ttlSeconds: 5 * 60, // 5 minutes
+      forceRefresh,
+      compute: async () => {
+        const oratsKey = process.env.ORATS_API_KEY;
+        const finnhubKey = process.env.FINNHUB_API_KEY;
 
-    // Fetch real ORATS data
-    // Note: ORATS API endpoints vary by subscription level
-    // This is a template - adjust based on your ORATS plan
+        // If no ORATS key, fall back to Finnhub + estimates
+        if (!oratsKey) {
+          console.warn("ORATS_API_KEY not found, using Finnhub fallback");
+          const fallback = await getFinnhubFallback(finnhubKey);
+          // getFinnhubFallback returns a Response; we need the payload for caching
+          const json = (await fallback.json()) as ORATSOptionsData;
+          return json;
+        }
 
-    const [vixData, ivRankData, pcRatioData] = await Promise.all([
-      fetchVIXFromFinnhub(finnhubKey),
-      fetchIVRankFromORATSorEstimate(oratsKey),
-      fetchPutCallRatioFromORATSorEstimate(oratsKey),
-    ]);
+        const [vixData, ivRankData, pcRatioData] = await Promise.all([
+          fetchVIXFromFinnhub(finnhubKey),
+          fetchIVRankFromORATSorEstimate(oratsKey),
+          fetchPutCallRatioFromORATSorEstimate(oratsKey),
+        ]);
 
-    const sentiment = calculateSentiment(vixData, pcRatioData);
+        const sentiment = calculateSentiment(vixData, pcRatioData);
+
+        return {
+          vix: vixData,
+          ivRank: ivRankData,
+          putCallRatio: pcRatioData,
+          sentiment,
+          unusualActivity: [], // Requires ORATS premium subscription
+          timestamp: Date.now(),
+        } as ORATSOptionsData;
+      },
+    });
 
     return NextResponse.json({
-      vix: vixData,
-      ivRank: ivRankData,
-      putCallRatio: pcRatioData,
-      sentiment,
-      unusualActivity: [], // Requires ORATS premium subscription
+      ...data,
+      cache,
+      // override timestamp so cached responses show “served now”
       timestamp: Date.now(),
-    } as ORATSOptionsData);
+    } as ORATSOptionsData & { cache?: unknown });
   } catch (error) {
     console.error("Error in /api/market/options-orats:", error);
     // Return fallback data
@@ -70,7 +86,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function fetchVIXFromFinnhub(apiKey: string | undefined): Promise<number | null> {
+async function fetchVIXFromFinnhub(
+  apiKey: string | undefined
+): Promise<number | null> {
   if (!apiKey) return null;
 
   try {
@@ -89,7 +107,7 @@ async function fetchVIXFromFinnhub(apiKey: string | undefined): Promise<number |
 async function fetchIVRankFromORATSorEstimate(apiKey: string): Promise<number> {
   // ORATS API example (adjust based on your subscription):
   // https://api.orats.io/datav2/hist/ivrank?token=YOUR_TOKEN&ticker=SPY
-  
+
   // For now, estimate from VIX if ORATS not available
   // You can replace this with actual ORATS call
   try {
@@ -97,23 +115,25 @@ async function fetchIVRankFromORATSorEstimate(apiKey: string): Promise<number> {
     // const res = await fetch(`https://api.orats.io/datav2/hist/ivrank?token=${apiKey}&ticker=SPY`);
     // const data = await res.json();
     // return data.ivRank || 50;
-    
+
     return 50; // Default until ORATS is fully integrated
   } catch {
     return 50;
   }
 }
 
-async function fetchPutCallRatioFromORATSorEstimate(apiKey: string): Promise<number> {
+async function fetchPutCallRatioFromORATSorEstimate(
+  apiKey: string
+): Promise<number> {
   // ORATS API example:
   // https://api.orats.io/datav2/hist/pcr?token=YOUR_TOKEN
-  
+
   try {
     // Placeholder: Replace with actual ORATS endpoint
     // const res = await fetch(`https://api.orats.io/datav2/hist/pcr?token=${apiKey}`);
     // const data = await res.json();
     // return data.putCallRatio || 0.9;
-    
+
     return 0.9; // Default until ORATS is fully integrated
   } catch {
     return 0.9;
@@ -145,4 +165,3 @@ function calculateSentiment(
   if (pcRatio > 1.1) return "FEARFUL";
   return "NEUTRAL";
 }
-

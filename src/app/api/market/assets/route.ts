@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { fmpClient } from "@/lib/api/clients/fmp-client";
 import { eodhdClient } from "@/lib/api/clients/eodhd-client";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -229,8 +230,11 @@ function getFallbackData(type: string): AssetData {
   return fallbacks[type] || fallbacks.spy;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get("refresh") === "1";
+
     // Check if at least FMP is configured
     if (!fmpClient.isConfigured()) {
       console.error("FMP API not configured.");
@@ -244,32 +248,42 @@ export async function GET() {
       );
     }
 
-    // Fetch all assets in parallel
-    const [spy, btc, eur, oil] = await Promise.all([
-      fetchSPY(),
-      fetchBitcoin(),
-      fetchEURUSD(),
-      fetchCrudeOil(),
-    ]);
+    const { data, cache } = await getOrComputeTtlCache({
+      key: "market:assets:v1",
+      ttlSeconds: 60, // 1 minute shared cache (real-time-ish but not streaming)
+      forceRefresh,
+      compute: async () => {
+        // Fetch all assets in parallel
+        const [spy, btc, eur, oil] = await Promise.all([
+          fetchSPY(),
+          fetchBitcoin(),
+          fetchEURUSD(),
+          fetchCrudeOil(),
+        ]);
 
-    // Build assets array with fallbacks
-    const assets: AssetData[] = [
-      spy || getFallbackData("spy"),
-      btc || getFallbackData("btc"),
-      eur || getFallbackData("eur"),
-      oil || getFallbackData("oil"),
-    ];
+        // Build assets array with fallbacks
+        const assets: AssetData[] = [
+          spy || getFallbackData("spy"),
+          btc || getFallbackData("btc"),
+          eur || getFallbackData("eur"),
+          oil || getFallbackData("oil"),
+        ];
 
-    // Determine source
-    const hasRealData = !!(spy || btc || eur || oil);
-    const source = hasRealData ? "fmp+eodhd" : "fallback";
+        // Determine source
+        const hasRealData = !!(spy || btc || eur || oil);
+        const source = hasRealData ? "fmp+eodhd" : "fallback";
+
+        return { assets, source };
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      data: assets,
-      source,
+      data: data.assets,
+      cache,
+      source: data.source,
       timestamp: Date.now(),
-    } as AssetsResponse);
+    } as AssetsResponse & { cache?: unknown });
   } catch (error) {
     console.error("Error in /api/market/assets:", error);
 

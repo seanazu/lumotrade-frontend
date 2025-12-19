@@ -10,7 +10,7 @@ import { useMarketNews } from "@/hooks/useMarketNews";
  */
 export function NewsSection() {
   const { data: newsData } = useMarketNews(20);
-  const displayStories = (newsData?.stories || []).slice(0, 3);
+  const displayStories = (newsData?.stories || []).slice(0, 8);
 
   return (
     <div className="bg-card border border-border rounded-2xl lg:rounded-[23px] p-4 sm:p-6 lg:col-span-1 shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -24,7 +24,7 @@ export function NewsSection() {
         </button>
       </div>
 
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-3 sm:space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent hover:scrollbar-thumb-muted">
         {displayStories.map((story, i) => (
           <motion.div
             key={i}

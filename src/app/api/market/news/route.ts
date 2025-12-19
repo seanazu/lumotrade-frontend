@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fmpClient, FMPClient } from "@/lib/api/clients/fmp-client";
 import { FMPNewsArticle } from "@/lib/api/types";
 import { MarketStory } from "@/resources/mock-data/indexes";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -348,6 +349,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const forceRefresh = searchParams.get("refresh") === "1";
 
     if (!fmpClient.isConfigured()) {
       return NextResponse.json(
@@ -360,70 +362,81 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch more articles than needed to have enough after filtering
-    const fetchLimit = Math.min(limit * 3, 60);
+    const cacheKey = `market:news:limit:${limit}:v1`;
 
-    // Get general financial news (more macro-focused than stock-specific news)
-    let articles = await fmpClient.getGeneralNews(fetchLimit);
+    const { data, cache } = await getOrComputeTtlCache({
+      key: cacheKey,
+      ttlSeconds: 10 * 60, // 10 minutes
+      forceRefresh,
+      compute: async () => {
+        // Fetch more articles than needed to have enough after filtering
+        const fetchLimit = Math.min(limit * 3, 60);
 
-    // Also get stock news for major ETFs that track broader market
-    const etfNews = await fmpClient.getStockNews(
-      ["SPY", "QQQ", "DIA", "IWM", "VTI"],
-      fetchLimit
-    );
+        // Get general financial news (more macro-focused than stock-specific news)
+        const articles = await fmpClient.getGeneralNews(fetchLimit);
 
-    // Combine and deduplicate by title
-    const allArticles = [...articles, ...etfNews];
-    const seenTitles = new Set<string>();
-    const uniqueArticles = allArticles.filter((article) => {
-      const title = article.title?.toLowerCase().trim() || "";
-      if (seenTitles.has(title)) return false;
-      seenTitles.add(title);
-      return true;
-    });
+        // Also get stock news for major ETFs that track broader market
+        const etfNews = await fmpClient.getStockNews(
+          ["SPY", "QQQ", "DIA", "IWM", "VTI"],
+          fetchLimit
+        );
 
-    // Filter for:
-    // 1. Articles from last 24 hours only
-    // 2. Macro-relevant news
-    // 3. Prioritize high-impact stories
-    const macroStories = uniqueArticles
-      .filter(isWithinLast24Hours) // Only last 24 hours
-      .filter(isMacroRelevant)
-      .map(transformToMarketStory)
-      .sort((a, b) => {
-        // Prioritize high-impact stories first
-        const aIsHighImpact = a.macroScore >= 20 ? 1 : 0;
-        const bIsHighImpact = b.macroScore >= 20 ? 1 : 0;
-        if (aIsHighImpact !== bIsHighImpact) {
-          return bIsHighImpact - aIsHighImpact;
-        }
-        // Then sort by score
-        return b.macroScore - a.macroScore;
-      })
-      .slice(0, limit)
-      .map(({ macroScore, ...story }) => story); // Remove internal score
-
-    // If we don't have enough macro news, include some general news from last 24h
-    if (macroStories.length < limit) {
-      const generalStories = uniqueArticles
-        .filter(isWithinLast24Hours) // Still only last 24 hours
-        .filter((a) => !isMacroRelevant(a))
-        .slice(0, limit - macroStories.length)
-        .map((article) => {
-          const story = transformToMarketStory(article);
-          const { macroScore, ...rest } = story;
-          return rest;
+        // Combine and deduplicate by title
+        const allArticles = [...articles, ...etfNews];
+        const seenTitles = new Set<string>();
+        const uniqueArticles = allArticles.filter((article) => {
+          const title = article.title?.toLowerCase().trim() || "";
+          if (seenTitles.has(title)) return false;
+          seenTitles.add(title);
+          return true;
         });
-      macroStories.push(...generalStories);
-    }
 
-    const summary = generateMarketSummary(macroStories);
+        // Filter for:
+        // 1. Articles from last 24 hours only
+        // 2. Macro-relevant news
+        // 3. Prioritize high-impact stories
+        const macroStories = uniqueArticles
+          .filter(isWithinLast24Hours) // Only last 24 hours
+          .filter(isMacroRelevant)
+          .map(transformToMarketStory)
+          .sort((a, b) => {
+            // Prioritize high-impact stories first
+            const aIsHighImpact = a.macroScore >= 20 ? 1 : 0;
+            const bIsHighImpact = b.macroScore >= 20 ? 1 : 0;
+            if (aIsHighImpact !== bIsHighImpact) {
+              return bIsHighImpact - aIsHighImpact;
+            }
+            // Then sort by score
+            return b.macroScore - a.macroScore;
+          })
+          .slice(0, limit)
+          .map(({ macroScore, ...story }) => story); // Remove internal score
+
+        // If we don't have enough macro news, include some general news from last 24h
+        if (macroStories.length < limit) {
+          const generalStories = uniqueArticles
+            .filter(isWithinLast24Hours) // Still only last 24 hours
+            .filter((a) => !isMacroRelevant(a))
+            .slice(0, limit - macroStories.length)
+            .map((article) => {
+              const story = transformToMarketStory(article);
+              const { macroScore, ...rest } = story;
+              return rest;
+            });
+          macroStories.push(...generalStories);
+        }
+
+        const summary = generateMarketSummary(macroStories);
+
+        return { macroStories, summary };
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      data: macroStories,
-      summary,
-      cached: false,
+      data: data.macroStories,
+      summary: data.summary,
+      cache,
       source: "fmp",
       timestamp: Date.now(),
     });

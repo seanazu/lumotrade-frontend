@@ -13,6 +13,35 @@ export function EarningsCard({
   estimate,
   actual,
 }: EarningsCardProps) {
+  // Format date for display
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Calculate days until earnings
+  const daysUntil = (dateStr: string) => {
+    try {
+      const earningsDate = new Date(dateStr);
+      const today = new Date();
+      const diffTime = earningsDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    } catch {
+      return null;
+    }
+  };
+
+  const days = daysUntil(date);
+
   return (
     <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 text-white">
       <div className="flex items-center justify-between mb-3">
@@ -35,15 +64,24 @@ export function EarningsCard({
           </svg>
         </div>
       </div>
-      <div className="text-3xl font-bold mb-1">{date}</div>
-      <div className="text-sm mb-4 opacity-90">{timing}</div>
+      <div className="text-2xl font-bold mb-1">{formatDate(date)}</div>
+      <div className="text-sm mb-3 opacity-90 flex items-center gap-2">
+        <span>{timing}</span>
+        {days !== null && (
+          <span className="px-2 py-0.5 rounded-full bg-white/20 text-xs font-medium">
+            {days > 0 ? `${days} days` : days === 0 ? "Today" : "Past"}
+          </span>
+        )}
+      </div>
       <div className="flex gap-6">
         <div>
-          <div className="text-[10px] opacity-70 uppercase mb-1">Estimate</div>
+          <div className="text-[10px] opacity-70 uppercase mb-1">
+            Estimated EPS
+          </div>
           <div className="font-mono font-bold text-lg">{estimate}</div>
         </div>
         <div>
-          <div className="text-[10px] opacity-70 uppercase mb-1">Actual</div>
+          <div className="text-[10px] opacity-70 uppercase mb-1">Last EPS</div>
           <div className="font-mono font-bold text-lg">{actual}</div>
         </div>
       </div>

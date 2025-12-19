@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,10 @@ interface MoversResponse {
   error?: string;
 }
 
-async function fetchFromFMP(endpoint: string, apiKey: string): Promise<MarketMover[]> {
+async function fetchFromFMP(
+  endpoint: string,
+  apiKey: string
+): Promise<MarketMover[]> {
   const response = await fetch(
     `https://financialmodelingprep.com/api/v3/${endpoint}?apikey=${apiKey}`,
     { next: { revalidate: 60 } } // Cache for 1 minute
@@ -44,6 +48,7 @@ async function fetchFromFMP(endpoint: string, apiKey: string): Promise<MarketMov
 export async function GET(request: NextRequest) {
   try {
     const apiKey = process.env.FMP_API_KEY;
+    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "1";
 
     if (!apiKey) {
       return NextResponse.json(
@@ -59,18 +64,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all three categories in parallel
-    const [gainers, losers, actives] = await Promise.all([
-      fetchFromFMP("stock_market/gainers", apiKey),
-      fetchFromFMP("stock_market/losers", apiKey),
-      fetchFromFMP("stock_market/actives", apiKey),
-    ]);
+    const { data, cache } = await getOrComputeTtlCache({
+      key: "market:movers:v1",
+      ttlSeconds: 60, // 1 minute shared cache
+      forceRefresh,
+      compute: async () => {
+        const [gainers, losers, actives] = await Promise.all([
+          fetchFromFMP("stock_market/gainers", apiKey),
+          fetchFromFMP("stock_market/losers", apiKey),
+          fetchFromFMP("stock_market/actives", apiKey),
+        ]);
 
-    const result: MoversResponse = {
+        return { gainers, losers, actives };
+      },
+    });
+
+    const result: MoversResponse & { cache?: unknown } = {
       success: true,
-      gainers,
-      losers,
-      actives,
+      gainers: data.gainers,
+      losers: data.losers,
+      actives: data.actives,
+      cache,
       timestamp: Date.now(),
     };
 
@@ -90,4 +104,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

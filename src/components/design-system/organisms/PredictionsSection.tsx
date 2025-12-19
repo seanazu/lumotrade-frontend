@@ -8,11 +8,13 @@ import { PredictionCard } from "@/components/design-system/molecules/PredictionC
 
 interface Prediction {
   ticker: string;
-  direction: "UP" | "DOWN";
+  direction: "UP" | "DOWN" | "HOLD";
   confidence?: number;
   magnitude?: number;
   should_trade?: boolean;
   date: string;
+  actual_return?: number | null;
+  was_correct?: boolean | null;
 }
 
 interface PredictionsSectionProps {
@@ -23,6 +25,7 @@ interface PredictionsSectionProps {
 /**
  * Predictions Section Component
  * Displays AI model predictions with expand/collapse functionality
+ * Shows active trades for each prediction
  */
 export function PredictionsSection({
   predictions,
@@ -49,22 +52,28 @@ export function PredictionsSection({
             <p className="text-xs text-muted-foreground">
               {isLoading
                 ? "Loading predictions..."
-                : `${predictions?.length || 0} assets predicted`}
+                : showAllPredictions
+                  ? `Showing all ${predictions?.length || 0} predictions`
+                  : `${predictions?.length || 0} predictions • Showing 4`}
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setShowAllPredictions(!showAllPredictions)}
-          className="text-xs sm:text-sm text-primary hover:text-primary/80 font-medium transition-colors flex items-center gap-1"
-        >
-          {showAllPredictions ? "Show Less" : "View All"}{" "}
-          <ArrowRight
-            className={cn(
-              "w-3 h-3 transition-transform",
-              showAllPredictions && "rotate-90"
-            )}
-          />
-        </button>
+        {predictions && predictions.length > 4 && (
+          <button
+            onClick={() => setShowAllPredictions(!showAllPredictions)}
+            className="text-xs sm:text-sm text-primary hover:text-primary/80 font-medium transition-colors flex items-center gap-1"
+          >
+            {showAllPredictions
+              ? "Show Less"
+              : `View All (${predictions.length})`}{" "}
+            <ArrowRight
+              className={cn(
+                "w-3 h-3 transition-transform",
+                showAllPredictions && "rotate-90"
+              )}
+            />
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -86,15 +95,17 @@ export function PredictionsSection({
         </div>
       ) : predictions && predictions.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {predictions
-            .slice(0, showAllPredictions ? 8 : 4)
-            .map((prediction, idx) => (
-              <PredictionCard
-                key={prediction.ticker + idx}
-                prediction={prediction}
-                index={idx}
-              />
-            ))}
+          {(showAllPredictions ? predictions : predictions.slice(0, 4)).map(
+            (prediction, idx) => {
+              return (
+                <PredictionCard
+                  key={prediction.id || prediction.ticker}
+                  prediction={prediction}
+                  index={idx}
+                />
+              );
+            }
+          )}
         </div>
       ) : (
         <div className="text-center py-12">
@@ -112,4 +123,3 @@ export function PredictionsSection({
     </motion.div>
   );
 }
-

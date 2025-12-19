@@ -2,7 +2,7 @@
  * Market Indexes API Route
  * GET /api/market/indexes
  * Returns real-time data for major market indexes
- * 
+ *
  * Note: Uses FMP (Financial Modeling Prep) for index data since
  * Polygon.io requires a paid plan for indices. FMP supports indices
  * on both free and paid tiers.
@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { fmpClient } from "@/lib/api/clients/fmp-client";
 import { IndexData } from "@/resources/mock-data/indexes";
 import { MOCK_INDEXES } from "@/resources/mock-data/indexes";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,8 +49,11 @@ function transformToIndexData(
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get("refresh") === "1";
+
     // Check if FMP is configured
     if (!fmpClient.isConfigured()) {
       console.error("FMP API not configured.");
@@ -63,42 +67,41 @@ export async function GET() {
       );
     }
 
-    // Fetch quotes for all indexes
-    const quotes = await fmpClient.getQuotes(INDEX_SYMBOLS);
+    const { data, cache } = await getOrComputeTtlCache({
+      key: "market:indexes:v1",
+      ttlSeconds: 60, // 1 minute shared cache
+      forceRefresh,
+      compute: async () => {
+        // Fetch quotes for all indexes
+        const quotes = await fmpClient.getQuotes(INDEX_SYMBOLS);
 
-    // Debug logging
-    console.log("📊 FMP Response Summary:");
-    console.log(`   Total symbols requested: ${INDEX_SYMBOLS.length}`);
-    console.log(`   Total quotes received: ${quotes.size}`);
-    quotes.forEach((quote, symbol) => {
-      console.log(`   ${symbol}: $${quote.price} (${quote.changesPercentage > 0 ? '+' : ''}${quote.changesPercentage?.toFixed(2)}%)`);
+        // Transform data
+        const indexesData: IndexData[] = INDEX_SYMBOLS.map((symbol) => {
+          const quote = quotes.get(symbol);
+          const mockData = MOCK_INDEXES.find((idx) => idx.symbol === symbol);
+
+          if (!mockData) {
+            throw new Error(`Mock data not found for ${symbol}`);
+          }
+
+          // If we have real data, transform it; otherwise use mock
+          if (quote) {
+            return transformToIndexData(symbol, quote, mockData);
+          }
+
+          return mockData;
+        });
+
+        const hasRealData = quotes.size > 0;
+        return { indexesData, source: hasRealData ? "fmp" : "mock" };
+      },
     });
-
-    // Transform data
-    const indexesData: IndexData[] = INDEX_SYMBOLS.map((symbol) => {
-      const quote = quotes.get(symbol);
-      const mockData = MOCK_INDEXES.find((idx) => idx.symbol === symbol);
-
-      if (!mockData) {
-        throw new Error(`Mock data not found for ${symbol}`);
-      }
-
-      // If we have real data, transform it; otherwise use mock
-      if (quote) {
-        return transformToIndexData(symbol, quote, mockData);
-      }
-
-      console.warn(`⚠️  No data received for ${symbol}, using fallback`);
-      return mockData;
-    });
-
-    const hasRealData = quotes.size > 0;
 
     return NextResponse.json({
       success: true,
-      data: indexesData,
-      cached: false,
-      source: hasRealData ? "fmp" : "mock",
+      data: data.indexesData,
+      cache,
+      source: data.source,
       timestamp: Date.now(),
     });
   } catch (error) {

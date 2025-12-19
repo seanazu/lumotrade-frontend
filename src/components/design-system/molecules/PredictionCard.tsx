@@ -1,18 +1,27 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Sparkles } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTickerInfo, getPredictionSentiment } from "@/utils/market/tickers";
 
 interface PredictionCardProps {
   prediction: {
     ticker: string;
-    direction: "UP" | "DOWN";
+    direction: "UP" | "DOWN" | "HOLD";
     confidence?: number;
     magnitude?: number;
     should_trade?: boolean;
+    // ML diagnostics (optional, but present from backend)
+    p_up?: number;
+    q10?: number;
+    q50?: number;
+    q90?: number;
+    spread?: number;
+    overnight_gap?: number;
     date: string;
+    actual_return?: number | null;
+    was_correct?: boolean | null;
   };
   index?: number;
 }
@@ -20,6 +29,7 @@ interface PredictionCardProps {
 /**
  * Prediction Card Component
  * Displays AI model prediction with confidence, sentiment, and forecast
+ * Shows active trade badge if there's an open position
  */
 export function PredictionCard({ prediction, index = 0 }: PredictionCardProps) {
   const tickerInfo = getTickerInfo(prediction.ticker);
@@ -29,8 +39,41 @@ export function PredictionCard({ prediction, index = 0 }: PredictionCardProps) {
   const sentiment = getPredictionSentiment(
     magnitude,
     prediction.should_trade || false,
-    isPositive
+    isPositive,
+    prediction.was_correct,
+    prediction.actual_return
   );
+
+  const hasActualReturn =
+    prediction.actual_return !== null && prediction.actual_return !== undefined;
+  const showTradePnl = (prediction.should_trade || false) && hasActualReturn;
+
+  // Explain "NO TRADE" when confidence looks high
+  const noTradeReason = (() => {
+    if (prediction.should_trade) return null;
+
+    const conf = prediction.confidence ?? 0;
+    const spread =
+      typeof prediction.spread === "number" ? prediction.spread : null;
+    const minConf = 0.6;
+    const minSpread = 0.015;
+
+    if (conf < minConf) {
+      return `Confidence ${(conf * 100).toFixed(0)}% < ${(
+        minConf * 100
+      ).toFixed(0)}% threshold`;
+    }
+
+    // Most common case: model is confident on direction but expects a small move
+    if (spread !== null && spread < minSpread) {
+      return `Spread ${(spread * 100).toFixed(2)}% < ${(
+        minSpread * 100
+      ).toFixed(2)}% (not enough edge)`;
+    }
+
+    // Fallback
+    return "Trade filters blocked execution (range/edge filters)";
+  })();
 
   return (
     <motion.div
@@ -38,7 +81,10 @@ export function PredictionCard({ prediction, index = 0 }: PredictionCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.15 }}
       whileHover={{ scale: 1.02, y: -2 }}
-      className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md cursor-pointer group relative overflow-hidden"
+      className={cn(
+        "bg-card border rounded-xl p-4 shadow-sm hover:shadow-md cursor-pointer group relative overflow-hidden",
+        "border-border"
+      )}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
@@ -82,8 +128,8 @@ export function PredictionCard({ prediction, index = 0 }: PredictionCardProps) {
           </div>
         </div>
 
-        {/* Sentiment Badge */}
-        <div className="mb-3">
+        {/* Sentiment Badge & Trade Result */}
+        <div className="mb-3 flex items-center gap-2">
           <span
             className={cn(
               "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase",
@@ -96,7 +142,41 @@ export function PredictionCard({ prediction, index = 0 }: PredictionCardProps) {
           >
             {sentiment.label}
           </span>
+          {showTradePnl && (
+            <span
+              className={cn(
+                "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold",
+                (prediction.actual_return || 0) >= 0
+                  ? "bg-emerald-500/10 text-emerald-500"
+                  : "bg-red-500/10 text-red-500"
+              )}
+            >
+              P/L {(prediction.actual_return || 0) >= 0 ? "+" : ""}
+              {((prediction.actual_return || 0) * 100).toFixed(2)}%
+            </span>
+          )}
         </div>
+
+        {/* No-trade reason (no mock; explain the rule) */}
+        {!prediction.should_trade && (
+          <div className="mb-3">
+            <div className="text-[9px] text-muted-foreground uppercase mb-1">
+              Why no trade
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {noTradeReason || "—"}
+            </div>
+            {(typeof prediction.p_up === "number" ||
+              typeof prediction.spread === "number") && (
+              <div className="mt-1 text-[10px] text-muted-foreground font-mono">
+                {typeof prediction.p_up === "number" &&
+                  `p_up=${prediction.p_up.toFixed(3)} `}
+                {typeof prediction.spread === "number" &&
+                  `spread=${prediction.spread.toFixed(4)}`}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Direction & Magnitude */}
         <div className="grid grid-cols-2 gap-3 mb-3">
@@ -105,15 +185,21 @@ export function PredictionCard({ prediction, index = 0 }: PredictionCardProps) {
               Direction
             </div>
             <div className="flex items-center gap-1">
-              {isPositive ? (
+              {prediction.direction === "UP" ? (
                 <TrendingUp className="w-4 h-4 text-emerald-500" />
-              ) : (
+              ) : prediction.direction === "DOWN" ? (
                 <TrendingDown className="w-4 h-4 text-red-500" />
+              ) : (
+                <Minus className="w-4 h-4 text-muted-foreground" />
               )}
               <span
                 className={cn(
                   "text-sm font-bold",
-                  isPositive ? "text-emerald-500" : "text-red-500"
+                  prediction.direction === "UP"
+                    ? "text-emerald-500"
+                    : prediction.direction === "DOWN"
+                      ? "text-red-500"
+                      : "text-muted-foreground"
                 )}
               >
                 {prediction.direction}
@@ -127,10 +213,14 @@ export function PredictionCard({ prediction, index = 0 }: PredictionCardProps) {
             <div
               className={cn(
                 "text-lg font-bold",
-                isPositive ? "text-emerald-500" : "text-red-500"
+                prediction.direction === "UP"
+                  ? "text-emerald-500"
+                  : prediction.direction === "DOWN"
+                    ? "text-red-500"
+                    : "text-muted-foreground"
               )}
             >
-              {isPositive ? "+" : ""}
+              {prediction.direction === "UP" ? "+" : ""}
               {(magnitude * 100).toFixed(2)}%
             </div>
           </div>
@@ -179,4 +269,3 @@ export function PredictionCard({ prediction, index = 0 }: PredictionCardProps) {
     </motion.div>
   );
 }
-

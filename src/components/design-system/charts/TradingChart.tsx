@@ -17,6 +17,35 @@ import {
   HistogramSeries,
 } from "lightweight-charts";
 
+function toChartTime(input: unknown): Time | null {
+  if (typeof input === "number" && Number.isFinite(input)) {
+    // Heuristic: if it's in ms (13 digits), convert to seconds.
+    const seconds =
+      input > 20_000_000_000 ? Math.floor(input / 1000) : Math.floor(input);
+    return seconds as Time;
+  }
+
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    // If it's a numeric string, treat as seconds or ms.
+    const asNum = Number(trimmed);
+    if (Number.isFinite(asNum)) {
+      const seconds =
+        asNum > 20_000_000_000 ? Math.floor(asNum / 1000) : Math.floor(asNum);
+      return seconds as Time;
+    }
+
+    const ms = Date.parse(trimmed);
+    if (Number.isFinite(ms)) {
+      return Math.floor(ms / 1000) as Time;
+    }
+  }
+
+  return null;
+}
+
 export interface CandleData {
   time: string | number;
   open: number;
@@ -38,6 +67,21 @@ export interface TradingChartProps {
   showVolume?: boolean;
   showGrid?: boolean;
   predictions?: LineDataPoint[];
+  overlays?: Array<{
+    id: string;
+    title?: string;
+    color: string;
+    lineWidth?: number;
+    lineStyle?: number;
+    data: LineDataPoint[];
+  }>;
+  priceLines?: Array<{
+    price: number;
+    color: string;
+    title?: string;
+    lineWidth?: number;
+    lineStyle?: number;
+  }>;
   className?: string;
   onCrosshairMove?: (price: number | null, time: Time | null) => void;
 }
@@ -49,6 +93,8 @@ export function TradingChart({
   showVolume = true,
   showGrid = true,
   predictions,
+  overlays,
+  priceLines,
   className = "",
   onCrosshairMove,
 }: TradingChartProps) {
@@ -165,15 +211,19 @@ export function TradingChart({
         wickDownColor: colors.downColor,
       });
 
-      const candleData: CandlestickData[] = data.map((d) => ({
-        time: (typeof d.time === "string"
-          ? new Date(d.time).getTime() / 1000
-          : d.time) as Time,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-      }));
+      const candleData: CandlestickData[] = data
+        .map((d) => {
+          const time = toChartTime((d as any)?.time);
+          if (!time) return null;
+          return {
+            time,
+            open: d.open,
+            high: d.high,
+            low: d.low,
+            close: d.close,
+          } satisfies CandlestickData;
+        })
+        .filter(Boolean) as CandlestickData[];
 
       candleSeries.setData(candleData);
       mainSeriesRef.current = candleSeries;
@@ -187,12 +237,13 @@ export function TradingChart({
         crosshairMarkerBackgroundColor: colors.background,
       });
 
-      const lineData: LineData[] = data.map((d) => ({
-        time: (typeof d.time === "string"
-          ? new Date(d.time).getTime() / 1000
-          : d.time) as Time,
-        value: d.close,
-      }));
+      const lineData: LineData[] = data
+        .map((d) => {
+          const time = toChartTime((d as any)?.time);
+          if (!time) return null;
+          return { time, value: d.close } satisfies LineData;
+        })
+        .filter(Boolean) as LineData[];
 
       lineSeries.setData(lineData);
       mainSeriesRef.current = lineSeries;
@@ -206,12 +257,13 @@ export function TradingChart({
         crosshairMarkerRadius: 4,
       });
 
-      const areaData: LineData[] = data.map((d) => ({
-        time: (typeof d.time === "string"
-          ? new Date(d.time).getTime() / 1000
-          : d.time) as Time,
-        value: d.close,
-      }));
+      const areaData: LineData[] = data
+        .map((d) => {
+          const time = toChartTime((d as any)?.time);
+          if (!time) return null;
+          return { time, value: d.close } satisfies LineData;
+        })
+        .filter(Boolean) as LineData[];
 
       areaSeries.setData(areaData);
       mainSeriesRef.current = areaSeries;
@@ -236,14 +288,19 @@ export function TradingChart({
 
       const volumeData: HistogramData[] = data
         .filter((d) => d.volume !== undefined)
-        .map((d) => ({
-          time: (typeof d.time === "string"
-            ? new Date(d.time).getTime() / 1000
-            : d.time) as Time,
-          value: d.volume!,
-          color:
-            d.close >= d.open ? `${colors.upColor}60` : `${colors.downColor}60`,
-        }));
+        .map((d) => {
+          const time = toChartTime((d as any)?.time);
+          if (!time) return null;
+          return {
+            time,
+            value: d.volume!,
+            color:
+              d.close >= d.open
+                ? `${colors.upColor}60`
+                : `${colors.downColor}60`,
+          } satisfies HistogramData;
+        })
+        .filter(Boolean) as HistogramData[];
 
       volumeSeries.setData(volumeData);
       volumeSeriesRef.current = volumeSeries;
@@ -259,15 +316,59 @@ export function TradingChart({
         title: "Prediction",
       });
 
-      const predictionData: LineData[] = predictions.map((p) => ({
-        time: (typeof p.time === "string"
-          ? new Date(p.time).getTime() / 1000
-          : p.time) as Time,
-        value: p.value,
-      }));
+      const predictionData: LineData[] = predictions
+        .map((p) => {
+          const time = toChartTime((p as any)?.time);
+          if (!time) return null;
+          return { time, value: p.value } satisfies LineData;
+        })
+        .filter(Boolean) as LineData[];
 
       predictionSeries.setData(predictionData);
       predictionSeriesRef.current = predictionSeries;
+    }
+
+    // Add overlay line series (moving averages, trend lines, etc.)
+    if (overlays && overlays.length > 0) {
+      for (const overlay of overlays) {
+        if (!overlay.data || overlay.data.length === 0) continue;
+        const s = chart.addSeries(LineSeries, {
+          color: overlay.color,
+          lineWidth: overlay.lineWidth ?? 2,
+          lineStyle: (overlay.lineStyle ?? 0) as any,
+          crosshairMarkerVisible: false,
+          title: overlay.title,
+        });
+
+        const seriesData: LineData[] = overlay.data
+          .map((p) => {
+            const time = toChartTime((p as any)?.time);
+            if (!time) return null;
+            return { time, value: p.value } satisfies LineData;
+          })
+          .filter(Boolean) as LineData[];
+
+        s.setData(seriesData);
+      }
+    }
+
+    // Add horizontal price lines (support/resistance/fibs/etc.)
+    if (priceLines && priceLines.length > 0 && mainSeriesRef.current) {
+      for (const pl of priceLines) {
+        try {
+          mainSeriesRef.current.createPriceLine({
+            price: pl.price,
+            color: pl.color,
+            lineWidth: pl.lineWidth ?? 1,
+            lineStyle: (pl.lineStyle ?? 2) as any,
+            axisLabelVisible: true,
+            title: pl.title,
+          });
+        } catch (e) {
+          // If a line fails, keep chart rendering
+          console.warn("Failed to create price line", e);
+        }
+      }
     }
 
     // Crosshair move handler
@@ -314,6 +415,8 @@ export function TradingChart({
     showVolume,
     showGrid,
     predictions,
+    overlays,
+    priceLines,
     isDark,
     onCrosshairMove,
   ]);
@@ -395,12 +498,13 @@ export function MiniChart({
       crosshairMarkerVisible: false,
     });
 
-    const chartData: LineData[] = data.map((d) => ({
-      time: (typeof d.time === "string"
-        ? new Date(d.time).getTime() / 1000
-        : d.time) as Time,
-      value: d.value,
-    }));
+    const chartData: LineData[] = data
+      .map((d) => {
+        const time = toChartTime((d as any)?.time);
+        if (!time) return null;
+        return { time, value: d.value } satisfies LineData;
+      })
+      .filter(Boolean) as LineData[];
 
     areaSeries.setData(chartData);
     chart.timeScale().fitContent();

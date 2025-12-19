@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@/lib/ai/openai-client";
+import { getOrComputeTtlCache, stableHash } from "@/lib/server/api-cache";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const maxDuration = 30;
 
 interface MarketInsightRequest {
@@ -38,6 +39,17 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
+
+    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "1";
+    const cacheKey = `market:insights:${stableHash({
+      stories: stories.slice(0, 10).map((s) => ({
+        title: s.title,
+        sentiment: s.sentiment,
+        importance: s.importance,
+      })),
+      technicalData,
+      mlPrediction,
+    })}:v1`;
 
     // Prepare context for ChatGPT
     const newsContext = stories
@@ -95,90 +107,108 @@ ${mlContext}
 - Focus on asymmetric risk/reward setups
 - Professional, concise, actionable`;
 
-    // Call GPT-5.1 with web search enabled
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a professional market analyst providing concise, actionable insights for traders. Be specific, data-driven, and balanced in your analysis.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
+    const { data, cache } = await getOrComputeTtlCache({
+      key: cacheKey,
+      ttlSeconds: 6 * 60 * 60, // 6 hours (expensive; input-driven)
+      forceRefresh,
+      compute: async () => {
+        // Call GPT-5.1 with web search enabled
+        const completion = await openai.chat.completions.create({
+          model: "gpt-5.1",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a professional market analyst providing concise, actionable insights for traders. Be specific, data-driven, and balanced in your analysis.",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 1500,
+        });
+
+        const analysis = completion.choices[0]?.message?.content || "";
+
+        // Parse the response into structured sections
+        const sections = {
+          summary: "",
+          keyTakeaways: [] as string[],
+          suggestions: [] as string[],
+          risks: [] as string[],
+        };
+
+        const lines = analysis.split("\n");
+        let currentSection = "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          if (
+            trimmed.toLowerCase().includes("market summary") ||
+            trimmed.startsWith("**Market Summary**")
+          ) {
+            currentSection = "summary";
+            continue;
+          } else if (
+            trimmed.toLowerCase().includes("key takeaways") ||
+            trimmed.startsWith("**Key Takeaways**")
+          ) {
+            currentSection = "takeaways";
+            continue;
+          } else if (
+            trimmed.toLowerCase().includes("trading ideas") ||
+            trimmed.toLowerCase().includes("trading suggestions") ||
+            trimmed.startsWith("**Trading Ideas**") ||
+            trimmed.startsWith("**Trading Suggestions**")
+          ) {
+            currentSection = "suggestions";
+            continue;
+          } else if (
+            trimmed.toLowerCase().includes("risk factors") ||
+            trimmed.startsWith("**Risk Factors**")
+          ) {
+            currentSection = "risks";
+            continue;
+          }
+
+          // Add content to appropriate section
+          if (currentSection === "summary" && !trimmed.startsWith("**")) {
+            sections.summary += (sections.summary ? " " : "") + trimmed;
+          } else if (
+            currentSection === "takeaways" &&
+            trimmed.match(/^[-•*\d]/)
+          ) {
+            sections.keyTakeaways.push(trimmed.replace(/^[-•*\d.)\s]+/, ""));
+          } else if (
+            currentSection === "suggestions" &&
+            trimmed.match(/^[-•*\d]/)
+          ) {
+            sections.suggestions.push(trimmed.replace(/^[-•*\d.)\s]+/, ""));
+          } else if (currentSection === "risks" && trimmed.match(/^[-•*\d]/)) {
+            sections.risks.push(trimmed.replace(/^[-•*\d.)\s]+/, ""));
+          }
+        }
+
+        // Fallback if parsing fails
+        if (!sections.summary && analysis) {
+          sections.summary = analysis.slice(0, 300);
+        }
+
+        return {
+          ...sections,
+          rawAnalysis: analysis,
+        };
+      },
     });
-
-    const analysis = completion.choices[0]?.message?.content || "";
-
-    // Parse the response into structured sections
-    const sections = {
-      summary: "",
-      keyTakeaways: [] as string[],
-      suggestions: [] as string[],
-      risks: [] as string[],
-    };
-
-    const lines = analysis.split("\n");
-    let currentSection = "";
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-
-      if (
-        trimmed.toLowerCase().includes("market summary") ||
-        trimmed.startsWith("**Market Summary**")
-      ) {
-        currentSection = "summary";
-        continue;
-      } else if (
-        trimmed.toLowerCase().includes("key takeaways") ||
-        trimmed.startsWith("**Key Takeaways**")
-      ) {
-        currentSection = "takeaways";
-        continue;
-      } else if (
-        trimmed.toLowerCase().includes("trading suggestions") ||
-        trimmed.startsWith("**Trading Suggestions**")
-      ) {
-        currentSection = "suggestions";
-        continue;
-      } else if (
-        trimmed.toLowerCase().includes("risk factors") ||
-        trimmed.startsWith("**Risk Factors**")
-      ) {
-        currentSection = "risks";
-        continue;
-      }
-
-      // Add content to appropriate section
-      if (currentSection === "summary" && !trimmed.startsWith("**")) {
-        sections.summary += (sections.summary ? " " : "") + trimmed;
-      } else if (currentSection === "takeaways" && trimmed.match(/^[-•*\d]/)) {
-        sections.keyTakeaways.push(trimmed.replace(/^[-•*\d.)\s]+/, ""));
-      } else if (currentSection === "suggestions" && trimmed.match(/^[-•*\d]/)) {
-        sections.suggestions.push(trimmed.replace(/^[-•*\d.)\s]+/, ""));
-      } else if (currentSection === "risks" && trimmed.match(/^[-•*\d]/)) {
-        sections.risks.push(trimmed.replace(/^[-•*\d.)\s]+/, ""));
-      }
-    }
-
-    // Fallback if parsing fails
-    if (!sections.summary && analysis) {
-      sections.summary = analysis.slice(0, 300);
-    }
 
     return NextResponse.json({
       success: true,
-      data: {
-        ...sections,
-        rawAnalysis: analysis,
-      },
+      data,
+      cache,
       timestamp: Date.now(),
     });
   } catch (error) {
@@ -192,4 +222,3 @@ ${mlContext}
     );
   }
 }
-

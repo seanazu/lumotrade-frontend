@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { fmpClient } from "@/lib/api/clients/fmp-client";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,7 +59,15 @@ interface HistoryResponse {
 
 function calculatePerformance(bars: HistoricalBar[]): PerformanceData {
   if (!bars || bars.length === 0) {
-    return { today: 0, week: 0, month: 0, ytd: 0, threeMonth: 0, sixMonth: 0, oneYear: 0 };
+    return {
+      today: 0,
+      week: 0,
+      month: 0,
+      ytd: 0,
+      threeMonth: 0,
+      sixMonth: 0,
+      oneYear: 0,
+    };
   }
 
   // Bars are typically in reverse chronological order (newest first)
@@ -74,24 +83,32 @@ function calculatePerformance(bars: HistoricalBar[]): PerformanceData {
   const findPriceAtDaysAgo = (daysAgo: number): number => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - daysAgo);
-    
+
     // Find the closest bar to target date
     const closest = sortedBars.reduce((prev, curr) => {
-      const prevDiff = Math.abs(new Date(prev.date).getTime() - targetDate.getTime());
-      const currDiff = Math.abs(new Date(curr.date).getTime() - targetDate.getTime());
+      const prevDiff = Math.abs(
+        new Date(prev.date).getTime() - targetDate.getTime()
+      );
+      const currDiff = Math.abs(
+        new Date(curr.date).getTime() - targetDate.getTime()
+      );
       return currDiff < prevDiff ? curr : prev;
     });
-    
+
     return closest?.close || latestPrice;
   };
 
   const findPriceAtDate = (targetDate: Date): number => {
     const closest = sortedBars.reduce((prev, curr) => {
-      const prevDiff = Math.abs(new Date(prev.date).getTime() - targetDate.getTime());
-      const currDiff = Math.abs(new Date(curr.date).getTime() - targetDate.getTime());
+      const prevDiff = Math.abs(
+        new Date(prev.date).getTime() - targetDate.getTime()
+      );
+      const currDiff = Math.abs(
+        new Date(curr.date).getTime() - targetDate.getTime()
+      );
       return currDiff < prevDiff ? curr : prev;
     });
-    
+
     return closest?.close || latestPrice;
   };
 
@@ -117,7 +134,10 @@ function calculatePerformance(bars: HistoricalBar[]): PerformanceData {
   };
 }
 
-function getRecentSessions(bars: HistoricalBar[], count: number = 5): RecentSession[] {
+function getRecentSessions(
+  bars: HistoricalBar[],
+  count: number = 5
+): RecentSession[] {
   const sortedBars = [...bars].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -174,6 +194,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const symbol = searchParams.get("symbol") || "SPY";
+    const forceRefresh = searchParams.get("refresh") === "1";
 
     if (!fmpClient.isConfigured()) {
       return NextResponse.json(
@@ -186,31 +207,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch historical data using FMP's historical endpoint
-    // We'll use the intraday endpoint with daily data
-    const apiKey = process.env.FMP_API_KEY;
-    const response = await fetch(
-      `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?apikey=${apiKey}&serietype=line`,
-      { next: { revalidate: 300 } } // Cache for 5 minutes
-    );
+    const cacheKey = `market:history:${symbol.toUpperCase()}:v1`;
 
-    if (!response.ok) {
-      throw new Error(`FMP API error: ${response.status}`);
-    }
+    const { data, cache } = await getOrComputeTtlCache({
+      key: cacheKey,
+      ttlSeconds: 6 * 60 * 60, // 6 hours (timeframe perf doesn't need minute-by-minute)
+      forceRefresh,
+      compute: async () => {
+        const apiKey = process.env.FMP_API_KEY;
+        const response = await fetch(
+          `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?apikey=${apiKey}&serietype=line`,
+          { next: { revalidate: 300 } }
+        );
 
-    const data = await response.json();
-    const historicalBars: HistoricalBar[] = data.historical || [];
+        if (!response.ok) {
+          throw new Error(`FMP API error: ${response.status}`);
+        }
 
-    const performance = calculatePerformance(historicalBars);
-    const recentSessions = getRecentSessions(historicalBars, 5);
-    const streak = calculateStreak(recentSessions);
+        const raw = await response.json();
+        const historicalBars: HistoricalBar[] = raw.historical || [];
 
-    const result: HistoryResponse = {
+        const performance = calculatePerformance(historicalBars);
+        const recentSessions = getRecentSessions(historicalBars, 5);
+        const streak = calculateStreak(recentSessions);
+
+        return { performance, recentSessions, streak };
+      },
+    });
+
+    const result: HistoryResponse & { cache?: unknown } = {
       success: true,
       symbol,
-      performance,
-      recentSessions,
-      streak,
+      performance: data.performance,
+      recentSessions: data.recentSessions,
+      streak: data.streak,
+      cache,
       timestamp: Date.now(),
     };
 
@@ -227,4 +258,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

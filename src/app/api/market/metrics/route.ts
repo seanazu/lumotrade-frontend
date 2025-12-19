@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { fmpClient } from "@/lib/api/clients/fmp-client";
 import { finnhubClient } from "@/lib/api/clients/finnhub-client";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -139,9 +140,10 @@ function calculateTrend(changePercent: number): string {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const marketOpen = isMarketOpen();
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get("refresh") === "1";
 
     // Check if FMP is configured
     if (!fmpClient.isConfigured()) {
@@ -156,48 +158,59 @@ export async function GET() {
       );
     }
 
-    // Fetch key market data in parallel
-    const [spyQuote, vixQuote, diaQuote] = await Promise.all([
-      fmpClient.getQuote("SPY"), // S&P 500 ETF
-      fmpClient.getQuote("^VIX"), // Volatility Index
-      fmpClient.getQuote("DIA"), // Dow Jones ETF for additional context
-    ]);
+    const { data, cache } = await getOrComputeTtlCache({
+      key: "market:metrics:v1",
+      ttlSeconds: 60, // 1 minute shared cache
+      forceRefresh,
+      compute: async () => {
+        const marketOpen = isMarketOpen();
 
-    // Use SPY as primary indicator
-    const spyData = spyQuote || {
-      changesPercentage: 0,
-      volume: 0,
-      avgVolume: 0,
-    };
+        // Fetch key market data in parallel
+        const [spyQuote, vixQuote] = await Promise.all([
+          fmpClient.getQuote("SPY"), // S&P 500 ETF
+          fmpClient.getQuote("^VIX"), // Volatility Index
+        ]);
 
-    const vixData = vixQuote || { price: 16 }; // Default VIX at neutral level
+        // Use SPY as primary indicator
+        const spyData = spyQuote || {
+          changesPercentage: 0,
+          volume: 0,
+          avgVolume: 0,
+        };
 
-    // Calculate metrics
-    const sentiment = calculateSentiment(
-      vixData.price,
-      spyData.changesPercentage
-    );
+        const vixData = vixQuote || { price: 16 }; // Default VIX at neutral level
 
-    const volume = calculateVolumeStatus(spyData.volume, spyData.avgVolume);
+        // Calculate metrics
+        const sentiment = calculateSentiment(
+          vixData.price,
+          spyData.changesPercentage
+        );
 
-    const volatility = calculateVolatility(vixData.price);
+        const volume = calculateVolumeStatus(spyData.volume, spyData.avgVolume);
 
-    const trend = calculateTrend(spyData.changesPercentage);
+        const volatility = calculateVolatility(vixData.price);
 
-    const metrics: MarketMetrics = {
-      isMarketOpen: marketOpen,
-      sentiment,
-      volume,
-      volatility,
-      trend,
-    };
+        const trend = calculateTrend(spyData.changesPercentage);
+
+        const metrics: MarketMetrics = {
+          isMarketOpen: marketOpen,
+          sentiment,
+          volume,
+          volatility,
+          trend,
+        };
+
+        return metrics;
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      data: metrics,
+      data,
+      cache,
       source: "fmp",
       timestamp: Date.now(),
-    } as MarketMetricsResponse);
+    } as MarketMetricsResponse & { cache?: unknown });
   } catch (error) {
     console.error("Error in /api/market/metrics:", error);
 

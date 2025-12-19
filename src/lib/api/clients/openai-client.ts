@@ -72,7 +72,7 @@ interface StockCandidate {
 
 class OpenAIClient {
   private client: OpenAI;
-  private model = "gpt-4o"; // Latest model with web search
+  private model = "gpt-5.2"; // Latest model with web search
 
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -301,9 +301,11 @@ ${idx + 1}. ${c.symbol} (${c.name})
   .join("\n")}
 
 INSTRUCTIONS:
-1. Select ONLY the 1-2 BEST opportunities (quality over quantity)
-2. Consider: volume confirmation, technical setup, options flow, news catalysts, sector strength
-3. For each opportunity, provide:
+1. PRIORITIZE GROWTH STOCKS with high potential - look for the next BIG MOVERS before they explode
+2. AVOID obvious mega-caps (AAPL, MSFT, etc.) - focus on mid-cap growth stories with momentum
+3. Select ONLY the 1-2 BEST unconventional opportunities with genuine breakout potential
+4. Consider: strong growth narrative, institutional accumulation, technical breakout setup, news catalysts, sector tailwinds
+5. For each opportunity, provide:
    - Setup type: momentum_breakout, mean_reversion, options_play, or swing_trade
    - Specific entry price and range
    - Target price with percentage gain
@@ -317,10 +319,14 @@ INSTRUCTIONS:
 
 CRITICAL RULES:
 - Only recommend setups with R:R >= 2:1
+- PRIORITIZE growth stocks with breakout potential over mega-caps
+- Look for stocks with strong growth narratives and institutional interest
+- Favor mid-cap ($2B-$50B) stocks with momentum over large-caps
 - Factor in current market regime (trending vs ranging)
 - Avoid extended stocks without volume confirmation
 - Check for negative catalysts or bearish divergences
-- If no great setups exist, return empty array
+- Stocks That are medium-cap and have breakout potential, it could be a large cap in the making.
+- If no great unconventional setups exist, return empty array rather than settling for obvious picks
 
 Return JSON format:
 {
@@ -347,22 +353,36 @@ Return JSON format:
    * System prompt for trading analysis
    */
   private getSystemPrompt(): string {
-    return `You are an expert trading system with deep knowledge of:
-- Technical analysis (chart patterns, indicators, support/resistance)
-- Market microstructure (order flow, volume analysis, smart money)
-- Risk management (position sizing, R:R ratios, win rates)
-- Options flow interpretation (unusual activity, put/call ratios)
-- Sentiment analysis (news, social media, market breadth)
-- Market regime detection (trending, ranging, volatile, risk-off)
+    return `You are an expert trading system specializing in finding HIGH-GROWTH opportunities before they explode.
 
-Your goal is to identify HIGH-PROBABILITY trading setups with:
-1. Clear technical confirmation (volume, breakouts, reversals)
-2. Smart money validation (options flow, insider buying, institutional accumulation)
-3. Positive catalysts (earnings, upgrades, sector strength)
-4. Favorable risk/reward (minimum 2:1, ideally 3:1+)
-5. Realistic win rates (60-75% based on backtested similar setups)
+Your track record includes identifying:
+- PLTR at $7 before it went to $80 (1000%+ gain)
+- SOFI at $5 before it tripled (300% gain)
+- RKLB at $4 before it went to $25 (500%+ gain)
 
-You are conservative and only recommend setups when multiple factors align. Quality over quantity.`;
+You have deep knowledge of:
+- Growth stock pattern recognition (identifying future multi-baggers)
+- Technical analysis (breakout setups, accumulation patterns, volume surges)
+- Institutional flow (smart money positioning, insider buying, unusual options activity)
+- Growth catalysts (new products, contracts, technology breakthroughs, sector tailwinds)
+- Market regime detection (when to favor growth vs value)
+
+Your goal is to identify UNCONVENTIONAL, HIGH-POTENTIAL trading setups:
+1. PRIORITIZE mid-cap growth stocks ($2B-$50B) over obvious mega-caps
+2. Look for stocks with strong growth narratives and institutional accumulation
+3. Identify technical breakouts in stocks with real fundamental catalysts
+4. Find stocks BEFORE they go parabolic, not after
+5. Smart money validation (unusual options activity, insider buying, institutional flow)
+6. Favorable risk/reward (minimum 2:1, ideally 3:1+)
+7. Realistic win rates (60-75% based on backtested similar setups)
+
+You avoid:
+- Obvious large-cap picks everyone knows about (AAPL, MSFT, GOOGL, etc.)
+- Penny stocks or super high-risk plays
+- Extended stocks that already had their move
+- Stocks without real growth catalysts
+
+You are selective and only recommend TRUE opportunities with genuine breakout potential. Quality over quantity.`;
   }
 }
 

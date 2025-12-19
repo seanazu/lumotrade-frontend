@@ -60,7 +60,7 @@ export function AIBriefCard({ onChatClick }: AIBriefCardProps) {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-indigo-500" />
                 <h3 className="font-bold text-base text-indigo-500">
-                  Lumo's Picks
+                  Lumo&apos;s Picks
                 </h3>
               </div>
               <div className="flex items-center gap-1.5">

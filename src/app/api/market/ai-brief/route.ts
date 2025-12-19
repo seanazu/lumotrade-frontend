@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { fmpClient } from "@/lib/api/clients/fmp-client";
 import { finnhubClient } from "@/lib/api/clients/finnhub-client";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -247,8 +248,11 @@ function getSectorReason(sectorName: string, change: number): string {
   return isPositive ? "Strong buying" : "Profit taking";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get("refresh") === "1";
+
     // Check if FMP is configured
     if (!fmpClient.isConfigured()) {
       console.error("FMP API not configured.");
@@ -262,51 +266,61 @@ export async function GET() {
       );
     }
 
-    // Fetch data in parallel
-    const [sentiment, sectorPerformance] = await Promise.all([
-      calculateSentiment(),
-      fetchSectorPerformance(),
-    ]);
+    const { data: briefData, cache } = await getOrComputeTtlCache({
+      key: "market:ai-brief:v1",
+      ttlSeconds: 15 * 60, // 15 minutes (shared DB cache across users)
+      forceRefresh,
+      compute: async () => {
+        // Fetch data in parallel
+        const [sentiment, sectorPerformance] = await Promise.all([
+          calculateSentiment(),
+          fetchSectorPerformance(),
+        ]);
 
-    // Sort sectors by performance
-    const sortedSectors = Array.from(sectorPerformance.entries())
-      .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-      .slice(0, 3); // Top 3 movers
+        // Sort sectors by performance
+        const sortedSectors = Array.from(sectorPerformance.entries())
+          .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+          .slice(0, 3); // Top 3 movers
 
-    // Generate key drivers
-    const keyDrivers: SectorDriver[] = sortedSectors.map(([name, change]) => ({
-      name,
-      symbol: name.toUpperCase().substring(0, 4),
-      change,
-      reason: getSectorReason(name, change),
-      icon: getSectorIcon(name),
-    }));
+        // Generate key drivers
+        const keyDrivers: SectorDriver[] = sortedSectors.map(
+          ([name, change]) => ({
+            name,
+            symbol: name.toUpperCase().substring(0, 4),
+            change,
+            reason: getSectorReason(name, change),
+            icon: getSectorIcon(name),
+          })
+        );
 
-    // Generate headline
-    const topSector =
-      sortedSectors.length > 0
-        ? { name: sortedSectors[0][0], change: sortedSectors[0][1] }
-        : null;
+        // Generate headline
+        const topSector =
+          sortedSectors.length > 0
+            ? { name: sortedSectors[0][0], change: sortedSectors[0][1] }
+            : null;
 
-    const { title, summary } = await generateHeadline(
-      sentiment.label,
-      topSector
-    );
+        const { title, summary } = await generateHeadline(
+          sentiment.label,
+          topSector
+        );
 
-    const briefData: AIBriefData = {
-      title,
-      summary,
-      sentimentScore: sentiment.score,
-      sentimentLabel: sentiment.label,
-      keyDrivers,
-    };
+        return {
+          title,
+          summary,
+          sentimentScore: sentiment.score,
+          sentimentLabel: sentiment.label,
+          keyDrivers,
+        } as AIBriefData;
+      },
+    });
 
     return NextResponse.json({
       success: true,
       data: briefData,
+      cache,
       source: "fmp",
       timestamp: Date.now(),
-    } as AIBriefResponse);
+    } as AIBriefResponse & { cache?: unknown });
   } catch (error) {
     console.error("Error in /api/market/ai-brief:", error);
 

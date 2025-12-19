@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { fmpClient } from "@/lib/api/clients/fmp-client";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -123,53 +124,62 @@ async function generateSubtitle(
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Get market session info
-    const { isOpen, session } = getMarketSession();
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get("refresh") === "1";
 
-    // Check if FMP is configured
-    if (!fmpClient.isConfigured()) {
-      console.error("FMP API not configured.");
+    const { data, cache } = await getOrComputeTtlCache({
+      key: "market:status:v1",
+      ttlSeconds: 30, // 30s shared cache
+      forceRefresh,
+      compute: async () => {
+        // Get market session info
+        const { isOpen, session } = getMarketSession();
 
-      // Return basic status without live data
-      const basicSubtitle = await generateSubtitle(session);
+        // Check if FMP is configured
+        if (!fmpClient.isConfigured()) {
+          // Return basic status without live data
+          const basicSubtitle = await generateSubtitle(session);
+          return {
+            status: {
+              isOpen,
+              session,
+              subtitle: basicSubtitle,
+            } satisfies MarketStatus,
+            source: "static",
+          };
+        }
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          isOpen,
+        // Fetch SPY data for volume and price info
+        const spyQuote = await fmpClient.getQuote("SPY");
+
+        // Generate dynamic subtitle
+        const subtitle = await generateSubtitle(
           session,
-          subtitle: basicSubtitle,
-        },
-        source: "static",
-        timestamp: Date.now(),
-      } as MarketStatusResponse);
-    }
+          spyQuote?.volume,
+          spyQuote?.avgVolume,
+          spyQuote?.changesPercentage
+        );
 
-    // Fetch SPY data for volume and price info
-    const spyQuote = await fmpClient.getQuote("SPY");
-
-    // Generate dynamic subtitle
-    const subtitle = await generateSubtitle(
-      session,
-      spyQuote?.volume,
-      spyQuote?.avgVolume,
-      spyQuote?.changesPercentage
-    );
-
-    const status: MarketStatus = {
-      isOpen,
-      session,
-      subtitle,
-    };
+        return {
+          status: {
+            isOpen,
+            session,
+            subtitle,
+          } satisfies MarketStatus,
+          source: "fmp",
+        };
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      data: status,
-      source: "fmp",
+      data: data.status,
+      cache,
+      source: data.source,
       timestamp: Date.now(),
-    } as MarketStatusResponse);
+    } as MarketStatusResponse & { cache?: unknown });
   } catch (error) {
     console.error("Error in /api/market/status:", error);
 

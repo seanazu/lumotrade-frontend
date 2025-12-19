@@ -1,13 +1,13 @@
 /**
  * Research Insights API Route
  * GET /api/market/research
- * Returns technical analysis and market insights from Marketaux and Massive
+ * Returns technical analysis and market insights from Marketaux and FMP
  */
 
 import { NextResponse } from "next/server";
 import { marketauxClient } from "@/lib/api/clients/marketaux-client";
-import { massiveClient } from "@/lib/api/clients/massive-client";
 import { fmpClient } from "@/lib/api/clients/fmp-client";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -169,35 +169,7 @@ async function fetchMarketauxInsights(): Promise<ResearchInsight[]> {
   }
 }
 
-/**
- * Fetch insights from Massive
- */
-async function fetchMassiveInsights(): Promise<ResearchInsight[]> {
-  try {
-    if (!massiveClient.isConfigured()) {
-      return [];
-    }
-
-    const insights = await massiveClient.getMarketInsights(10);
-
-    return insights.slice(0, 3).map((insight) => ({
-      category:
-        (insight.category?.toUpperCase() as
-          | "TECHNICAL"
-          | "FUNDAMENTAL"
-          | "SENTIMENT"
-          | "MACRO") || "TECHNICAL",
-      title: insight.title,
-      summary: insight.summary,
-      time: formatTimeAgo(insight.publishedAt),
-      source: insight.source || "Market Analysis",
-      url: insight.url,
-    }));
-  } catch (error) {
-    console.error("Error fetching Massive insights:", error);
-    return [];
-  }
-}
+// Removed: Massive API integration (deprecated, now using Polygon)
 
 /**
  * Generate actionable technical insights based on market data
@@ -327,61 +299,65 @@ async function generateTechnicalInsights(): Promise<ResearchInsight[]> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Fetch insights from all sources in parallel
-    const [marketauxInsights, massiveInsights, technicalInsights] =
-      await Promise.all([
-        fetchMarketauxInsights(),
-        fetchMassiveInsights(),
-        generateTechnicalInsights(),
-      ]);
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get("refresh") === "1";
 
-    // Combine and deduplicate insights
-    const allInsights: ResearchInsight[] = [];
+    const { data, cache } = await getOrComputeTtlCache({
+      key: "market:research:v1",
+      ttlSeconds: 60 * 60, // 1 hour
+      forceRefresh,
+      compute: async () => {
+        // Fetch insights from all sources in parallel
+        const [marketauxInsights, technicalInsights] = await Promise.all([
+          fetchMarketauxInsights(),
+          generateTechnicalInsights(),
+        ]);
 
-    // Add technical insights first (most actionable)
-    allInsights.push(...technicalInsights);
+        // Combine and deduplicate insights
+        const allInsights: ResearchInsight[] = [];
 
-    // Add Massive insights
-    allInsights.push(...massiveInsights);
+        // Add technical insights first (most actionable)
+        allInsights.push(...technicalInsights);
 
-    // Add Marketaux insights (external analysis)
-    allInsights.push(...marketauxInsights);
+        // Add Marketaux insights (external analysis)
+        allInsights.push(...marketauxInsights);
 
-    // Deduplicate by title
-    const seenTitles = new Set<string>();
-    const uniqueInsights = allInsights.filter((insight) => {
-      const titleLower = insight.title.toLowerCase();
-      if (seenTitles.has(titleLower)) {
-        return false;
-      }
-      seenTitles.add(titleLower);
-      return true;
+        // Deduplicate by title
+        const seenTitles = new Set<string>();
+        const uniqueInsights = allInsights.filter((insight) => {
+          const titleLower = insight.title.toLowerCase();
+          if (seenTitles.has(titleLower)) {
+            return false;
+          }
+          seenTitles.add(titleLower);
+          return true;
+        });
+
+        // Take top 3 insights
+        const topInsights = uniqueInsights.slice(0, 3);
+
+        // Determine source
+        let source = "fmp";
+        if (technicalInsights.length > 0) {
+          source = "fmp-analysis";
+        }
+        if (marketauxInsights.length > 0) {
+          source += "+marketaux";
+        }
+
+        return { topInsights, source };
+      },
     });
-
-    // Take top 3 insights
-    const topInsights = uniqueInsights.slice(0, 3);
-
-    // Determine source
-    let source = "fmp";
-    if (technicalInsights.length > 0) {
-      source = "fmp-analysis";
-    }
-    if (massiveInsights.length > 0 && marketauxInsights.length > 0) {
-      source += "+massive+marketaux";
-    } else if (massiveInsights.length > 0) {
-      source += "+massive";
-    } else if (marketauxInsights.length > 0) {
-      source += "+marketaux";
-    }
 
     return NextResponse.json({
       success: true,
-      data: topInsights,
-      source,
+      data: data.topInsights,
+      cache,
+      source: data.source,
       timestamp: Date.now(),
-    } as ResearchResponse);
+    } as ResearchResponse & { cache?: unknown });
   } catch (error) {
     console.error("Error in /api/market/research:", error);
 

@@ -275,7 +275,10 @@ class PolygonClient {
     to: string,
     timespan: "minute" | "hour" | "day" | "week" | "month" = "day"
   ): Promise<PolygonAggregateBar[]> {
-    if (!this.isConfigured()) return [];
+    if (!this.isConfigured()) {
+      console.error("❌ Polygon API not configured - missing API key");
+      return [];
+    }
 
     const polygonTicker = INDEX_SYMBOL_MAP[ticker] || ticker;
 
@@ -285,9 +288,14 @@ class PolygonClient {
         { adjusted: "true", sort: "asc", apiKey: this.apiKey }
       );
 
+      console.log(`📡 Polygon API: GET ${url.replace(this.apiKey, "***")}`);
+
       interface AggregatesResponse {
         status: string;
         results?: PolygonAggregateBar[];
+        resultsCount?: number;
+        queryCount?: number;
+        error?: string;
       }
 
       const response = await fetchWithRetry<AggregatesResponse>(url, {
@@ -295,13 +303,21 @@ class PolygonClient {
         retries: 2,
       });
 
+      console.log(
+        `📊 Polygon response: status=${response.status}, results=${response.results?.length || 0}`
+      );
+
       if (response.status === "OK" && response.results) {
         return response.results;
       }
 
+      if (response.error) {
+        console.error(`❌ Polygon API error: ${response.error}`);
+      }
+
       return [];
     } catch (error) {
-      console.error(`Error fetching aggregate bars for ${ticker}:`, error);
+      console.error(`❌ Error fetching aggregate bars for ${ticker}:`, error);
       return [];
     }
   }

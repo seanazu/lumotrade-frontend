@@ -65,8 +65,10 @@ export function useTradingOpportunities() {
       }
       return response.json();
     },
-    refetchInterval: 15 * 60 * 1000, // Refetch every 15 minutes
-    staleTime: 10 * 60 * 1000, // Consider data stale after 10 minutes
+    // Daily-cached server-side (DB) — avoid long polling / repeated paid calls
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
     retry: 2,
   });
 }

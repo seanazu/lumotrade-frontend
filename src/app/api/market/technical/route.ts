@@ -5,13 +5,18 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { polygonClient, CompleteTechnicalAnalysis } from "@/lib/api/clients/polygon-client";
+import {
+  polygonClient,
+  CompleteTechnicalAnalysis,
+} from "@/lib/api/clients/polygon-client";
+import { getOrComputeTtlCache } from "@/lib/server/api-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // ML Backend URL
-const ML_BACKEND_URL = process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
+const ML_BACKEND_URL =
+  process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
 
 interface MLPrediction {
   direction: "UP" | "DOWN";
@@ -102,7 +107,9 @@ function generatePlainEnglishSummary(
     // Add MACD interpretation
     if (analysis.macd) {
       if (analysis.macd.histogram > 0) {
-        parts.push("MACD shows positive momentum, supporting the bullish case.");
+        parts.push(
+          "MACD shows positive momentum, supporting the bullish case."
+        );
       } else {
         parts.push("MACD shows negative momentum, suggesting caution.");
       }
@@ -153,6 +160,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const symbolsParam = searchParams.get("symbols") || "SPY";
+    const forceRefresh = searchParams.get("refresh") === "1";
     const symbols = symbolsParam.split(",").map((s) => s.trim());
 
     // Check if Polygon is configured
@@ -160,46 +168,66 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Polygon API is not configured. Add POLYGON_API_KEY to .env.local",
+          error:
+            "Polygon API is not configured. Add POLYGON_API_KEY to .env.local",
           timestamp: Date.now(),
         },
         { status: 503 }
       );
     }
 
-    // Fetch ML prediction (shared across all tickers)
-    const mlPrediction = await fetchMLPrediction();
+    const cacheKey = `market:technical:${symbols.map((s) => s.toUpperCase()).join(",")}:v1`;
 
-    // Fetch technical analysis for all symbols in parallel
-    const analysisPromises = symbols.map(async (ticker): Promise<TechnicalAnalysisResponse> => {
-      const analysis = await polygonClient.getTechnicalAnalysis(ticker);
+    const { data, cache } = await getOrComputeTtlCache({
+      key: cacheKey,
+      ttlSeconds: 2 * 60, // 2 minutes shared cache
+      forceRefresh,
+      compute: async () => {
+        // Fetch ML prediction (shared across all tickers)
+        const mlPrediction = await fetchMLPrediction();
 
-      return {
-        ticker,
-        analysis,
-        prediction: mlPrediction || undefined,
-        marketSentiment: determineMarketSentiment(analysis, mlPrediction),
-        plainEnglishSummary: generatePlainEnglishSummary(analysis, mlPrediction),
-      };
+        // Fetch technical analysis for all symbols in parallel
+        const analysisPromises = symbols.map(
+          async (ticker): Promise<TechnicalAnalysisResponse> => {
+            const analysis = await polygonClient.getTechnicalAnalysis(ticker);
+
+            return {
+              ticker,
+              analysis,
+              prediction: mlPrediction || undefined,
+              marketSentiment: determineMarketSentiment(analysis, mlPrediction),
+              plainEnglishSummary: generatePlainEnglishSummary(
+                analysis,
+                mlPrediction
+              ),
+            };
+          }
+        );
+
+        const results = await Promise.all(analysisPromises);
+
+        // Generate overall market summary
+        const primaryAnalysis = results[0];
+        const overallSummary = {
+          headline: mlPrediction
+            ? `Market expected to move ${mlPrediction.direction === "UP" ? "higher" : "lower"} today`
+            : "Analyzing market conditions...",
+          confidence: mlPrediction
+            ? Math.round(mlPrediction.confidence * 100)
+            : null,
+          sentiment: primaryAnalysis?.marketSentiment || "neutral",
+          recommendation: mlPrediction?.recommendation || "Awaiting signal",
+        };
+
+        return { results, overallSummary };
+      },
     });
-
-    const results = await Promise.all(analysisPromises);
-
-    // Generate overall market summary
-    const primaryAnalysis = results[0];
-    const overallSummary = {
-      headline: mlPrediction
-        ? `Market expected to move ${mlPrediction.direction === "UP" ? "higher" : "lower"} today`
-        : "Analyzing market conditions...",
-      confidence: mlPrediction ? Math.round(mlPrediction.confidence * 100) : null,
-      sentiment: primaryAnalysis?.marketSentiment || "neutral",
-      recommendation: mlPrediction?.recommendation || "Awaiting signal",
-    };
 
     return NextResponse.json({
       success: true,
-      data: results,
-      summary: overallSummary,
+      data: data.results,
+      summary: data.overallSummary,
+      cache,
       timestamp: Date.now(),
     });
   } catch (error) {
@@ -215,4 +243,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

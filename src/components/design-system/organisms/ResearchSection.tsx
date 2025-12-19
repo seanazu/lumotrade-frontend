@@ -31,7 +31,7 @@ export function ResearchSection() {
         </h3>
       </div>
 
-      <div className="space-y-4 max-h-[500px] overflow-y-auto">
+      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent hover:scrollbar-thumb-muted">
         {displayInsights.slice(0, 3).map((insight, idx) => (
           <div
             key={idx}

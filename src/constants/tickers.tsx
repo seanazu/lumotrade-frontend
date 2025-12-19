@@ -62,6 +62,30 @@ export const TICKER_MAP: Record<string, TickerInfo> = {
     icon: <span className="text-lg">🛢️</span>,
     color: "yellow",
   },
+  HYG: {
+    name: "High Yield Bonds",
+    symbol: "HYG",
+    icon: <span className="text-lg">💼</span>,
+    color: "purple",
+  },
+  TLT: {
+    name: "20+ Year Treasury",
+    symbol: "TLT",
+    icon: <span className="text-lg">🏦</span>,
+    color: "blue",
+  },
+  XLF: {
+    name: "Financial Sector",
+    symbol: "XLF",
+    icon: <span className="text-lg">🏦</span>,
+    color: "green",
+  },
+  XLK: {
+    name: "Technology Sector",
+    symbol: "XLK",
+    icon: <span className="text-lg">💻</span>,
+    color: "purple",
+  },
 };
 
 export const DEFAULT_TICKER_INFO: TickerInfo = {
@@ -70,4 +94,3 @@ export const DEFAULT_TICKER_INFO: TickerInfo = {
   icon: <span className="text-lg">📊</span>,
   color: "blue",
 };
-

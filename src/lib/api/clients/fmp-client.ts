@@ -638,6 +638,220 @@ class FMPClient {
       return [];
     }
   }
+
+  /**
+   * Get earnings calendar for a symbol
+   * @param symbol - Stock symbol
+   * @returns Upcoming earnings date and estimates
+   */
+  async getEarningsCalendar(symbol: string): Promise<{
+    date?: string;
+    epsEstimated?: number;
+    revenueEstimated?: number;
+    fiscalDateEnding?: string;
+    time?: string;
+  } | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
+
+    const cacheKey = `fmp:earnings-calendar:${symbol}`;
+    const cached = cache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      return cached || null;
+    }
+
+    try {
+      const url = buildUrl(`${this.baseUrl}/v3/earning_calendar`, {
+        apikey: this.apiKey,
+        symbol: symbol,
+      });
+
+      const response = await fetchWithRetry<any[]>(url, {
+        timeout: 5000,
+        retries: 2,
+      });
+
+      if (response && response.length > 0) {
+        const nextEarnings = response[0];
+        const result = {
+          date: nextEarnings.date,
+          epsEstimated: nextEarnings.epsEstimated,
+          revenueEstimated: nextEarnings.revenueEstimated,
+          fiscalDateEnding: nextEarnings.fiscalDateEnding,
+          time: nextEarnings.time,
+        };
+        cache.set(cacheKey, result, 3600); // Cache for 1 hour
+        return result;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error fetching earnings calendar for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get income statement (financial data)
+   * @param symbol - Stock symbol
+   * @param period - annual or quarter
+   * @param limit - Number of periods to fetch
+   * @returns Income statement data
+   */
+  async getIncomeStatement(
+    symbol: string,
+    period: "annual" | "quarter" = "quarter",
+    limit: number = 4
+  ): Promise<any[] | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
+
+    const cacheKey = `fmp:income-statement:${symbol}:${period}:${limit}`;
+    const cached = cache.get<any[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      return cached || null;
+    }
+
+    try {
+      const url = buildUrl(`${this.baseUrl}/v3/income-statement/${symbol}`, {
+        apikey: this.apiKey,
+        period: period,
+        limit: limit.toString(),
+      });
+
+      const response = await fetchWithRetry<any[]>(url, {
+        timeout: 8000,
+        retries: 2,
+      });
+
+      if (response && Array.isArray(response)) {
+        cache.set(cacheKey, response, 3600); // Cache for 1 hour
+        return response;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error fetching income statement for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get dividend calendar for a symbol
+   * @param symbol - Stock symbol
+   * @returns Upcoming dividend information
+   */
+  async getDividendCalendar(symbol: string): Promise<{
+    date?: string;
+    dividend?: number;
+    paymentDate?: string;
+  } | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
+
+    const cacheKey = `fmp:dividend-calendar:${symbol}`;
+    const cached = cache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      return cached || null;
+    }
+
+    try {
+      const url = buildUrl(`${this.baseUrl}/v3/stock_dividend_calendar`, {
+        apikey: this.apiKey,
+        symbol: symbol,
+      });
+
+      const response = await fetchWithRetry<any[]>(url, {
+        timeout: 5000,
+        retries: 2,
+      });
+
+      if (response && response.length > 0) {
+        const nextDividend = response[0];
+        const result = {
+          date: nextDividend.date,
+          dividend: nextDividend.dividend,
+          paymentDate: nextDividend.paymentDate,
+        };
+        cache.set(cacheKey, result, 3600); // Cache for 1 hour
+        return result;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error fetching dividend calendar for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get historical earnings for a symbol
+   * @param symbol - Stock symbol
+   * @param limit - Number of periods to fetch
+   * @returns Historical earnings data
+   */
+  async getHistoricalEarnings(
+    symbol: string,
+    limit: number = 4
+  ): Promise<any[] | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
+
+    const cacheKey = `fmp:historical-earnings:${symbol}:${limit}`;
+    const cached = cache.get<any[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      return cached || null;
+    }
+
+    try {
+      const url = buildUrl(
+        `${this.baseUrl}/v3/historical/earning_calendar/${symbol}`,
+        {
+          apikey: this.apiKey,
+          limit: limit.toString(),
+        }
+      );
+
+      const response = await fetchWithRetry<any[]>(url, {
+        timeout: 5000,
+        retries: 2,
+      });
+
+      if (response && Array.isArray(response)) {
+        cache.set(cacheKey, response, 3600); // Cache for 1 hour
+        return response;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error fetching historical earnings for ${symbol}:`, error);
+      return null;
+    }
+  }
 }
 
 // Singleton instance

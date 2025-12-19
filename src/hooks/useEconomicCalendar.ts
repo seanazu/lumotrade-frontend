@@ -16,6 +16,7 @@ export interface EconomicEvent {
   previous?: string;
   actual?: string;
   unit?: string;
+  impactScore?: number; // 0-10 volatility score
 }
 
 // ============ API Functions ============
@@ -36,17 +37,17 @@ export function useEconomicCalendar() {
     queryKey: ["economic-calendar"],
     queryFn: async () => {
       const data = await fetchEconomicCalendar();
-      
+
       // If empty (weekend), return sample upcoming events
       if (!data || data.length === 0) {
         const today = new Date();
         const isWeekend = today.getDay() === 0 || today.getDay() === 6;
-        
+
         if (isWeekend) {
           // Return next week's likely events
           const monday = new Date(today);
-          monday.setDate(today.getDate() + (8 - today.getDay()) % 7);
-          
+          monday.setDate(today.getDate() + ((8 - today.getDay()) % 7));
+
           return [
             {
               country: "US",
@@ -55,7 +56,10 @@ export function useEconomicCalendar() {
               estimate: null,
               previous: null,
               impact: "high" as const,
-              date: new Date(monday.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+              date: new Date(
+                monday.getTime() + 2 * 24 * 60 * 60 * 1000
+              ).toISOString(),
+              impactScore: 7.3,
             },
             {
               country: "US",
@@ -64,7 +68,10 @@ export function useEconomicCalendar() {
               estimate: null,
               previous: null,
               impact: "high" as const,
-              date: new Date(monday.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+              date: new Date(
+                monday.getTime() + 3 * 24 * 60 * 60 * 1000
+              ).toISOString(),
+              impactScore: 9.2,
             },
             {
               country: "US",
@@ -73,16 +80,20 @@ export function useEconomicCalendar() {
               estimate: null,
               previous: null,
               impact: "medium" as const,
-              date: new Date(monday.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString(),
+              date: new Date(
+                monday.getTime() + 4 * 24 * 60 * 60 * 1000
+              ).toISOString(),
+              impactScore: 7.8,
             },
           ];
         }
       }
-      
+
       return data;
     },
-    refetchInterval: 300000,
-    staleTime: 120000,
+    // Server-side (DB) cached for hours; avoid unnecessary polling
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
   });
 }
-

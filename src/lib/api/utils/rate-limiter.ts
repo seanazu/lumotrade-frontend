@@ -145,9 +145,10 @@ export const rateLimitConfigs = {
     maxRequests: 100,
     windowMs: 60 * 1000, // 1 minute
   },
-  // Massive: Conservative limit (varies by plan)
+  // Massive (legacy name): uses the same key as Polygon in this project
+  // Keep a separate bucket so callers can rate-limit independently if needed.
   massive: {
-    maxRequests: 50,
+    maxRequests: 5,
     windowMs: 60 * 1000, // 1 minute
   },
 };

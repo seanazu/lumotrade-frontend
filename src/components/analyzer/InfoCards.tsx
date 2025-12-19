@@ -1,6 +1,25 @@
 "use client";
 
-export function InfoCards() {
+import type { StockAnalysisData } from "@/hooks/useStockAnalysis";
+import { useAIThesis } from "@/hooks/useAIThesis";
+import { cn } from "@/lib/utils";
+
+interface InfoCardsProps {
+  symbol: string;
+  analysis: StockAnalysisData;
+  aiEnabled?: boolean;
+}
+
+export function InfoCards({
+  symbol,
+  analysis,
+  aiEnabled = false,
+}: InfoCardsProps) {
+  const { data: aiThesis, isLoading: aiThesisLoading } = useAIThesis(
+    symbol,
+    aiEnabled
+  );
+
   return (
     <div className="bg-card border-b border-border">
       <div className="px-6 py-4 overflow-x-auto">
@@ -24,16 +43,34 @@ export function InfoCards() {
                 </svg>
               </div>
               <h3 className="font-semibold text-xs">AI Thesis</h3>
-              <span className="ml-auto px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase">
-                Bullish
-              </span>
+              {aiThesis && (
+                <span
+                  className={cn(
+                    "ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                    aiThesis.sentiment === "BULLISH" &&
+                      "bg-emerald-500/10 text-emerald-500",
+                    aiThesis.sentiment === "BEARISH" &&
+                      "bg-red-500/10 text-red-500",
+                    aiThesis.sentiment === "NEUTRAL" &&
+                      "bg-amber-500/10 text-amber-500"
+                  )}
+                >
+                  {aiThesis.sentiment}
+                </span>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-2">
-              Dominance in data center AI chips remains unchallenged. Demand
-              outstripping supply through 202...
+            <p className="text-xs text-muted-foreground leading-relaxed mb-2 line-clamp-3">
+              {aiThesis?.thesis ||
+                `Click Analyze to generate an AI thesis for ${symbol}.`}
             </p>
             <div className="flex items-center justify-between text-[10px]">
-              <span className="text-muted-foreground">Updated 1h ago</span>
+              <span className="text-muted-foreground">
+                {aiThesis?.conviction
+                  ? `${aiThesis.conviction} Conviction`
+                  : aiThesisLoading
+                    ? "Loading..."
+                    : "—"}
+              </span>
               <button className="text-primary hover:underline">Ask AI →</button>
             </div>
           </div>
@@ -59,38 +96,46 @@ export function InfoCards() {
               <h3 className="font-semibold text-xs">Key Levels</h3>
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
-                  Resistance 2
-                </span>
-                <span className="text-sm font-bold font-mono text-red-500">
-                  $480.00
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
-                  Resistance 1
-                </span>
-                <span className="text-sm font-bold font-mono text-red-500">
-                  $465.50
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
-                  Support 1
-                </span>
-                <span className="text-sm font-bold font-mono text-emerald-500">
-                  $450.20
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
-                  Support 2
-                </span>
-                <span className="text-sm font-bold font-mono text-emerald-500">
-                  $432.00
-                </span>
-              </div>
+              {analysis.keyLevels.resistance2 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">
+                    Resistance 2
+                  </span>
+                  <span className="text-sm font-bold font-mono text-red-500">
+                    ${analysis.keyLevels.resistance2.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {analysis.keyLevels.resistance1 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">
+                    Resistance 1
+                  </span>
+                  <span className="text-sm font-bold font-mono text-red-500">
+                    ${analysis.keyLevels.resistance1.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {analysis.keyLevels.support1 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">
+                    Support 1
+                  </span>
+                  <span className="text-sm font-bold font-mono text-emerald-500">
+                    ${analysis.keyLevels.support1.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {analysis.keyLevels.support2 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">
+                    Support 2
+                  </span>
+                  <span className="text-sm font-bold font-mono text-emerald-500">
+                    ${analysis.keyLevels.support2.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -115,30 +160,38 @@ export function InfoCards() {
               <h3 className="font-semibold text-xs">Catalysts</h3>
             </div>
             <div className="space-y-2">
-              <div className="p-2 rounded bg-muted/50">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold">Q3 Earnings</span>
-                  <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[9px] font-bold uppercase">
-                    High
-                  </span>
-                </div>
-                <span className="text-[10px] text-muted-foreground">
-                  Q4 - Est. EPS $2.38
-                </span>
-              </div>
-              <div className="p-2 rounded bg-muted/50">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold">
-                    AI Summit Keynote
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 text-[9px] font-bold uppercase">
-                    Low
-                  </span>
-                </div>
-                <span className="text-[10px] text-muted-foreground">
-                  Q4 - Product announcements
-                </span>
-              </div>
+              {analysis.catalysts.length > 0 ? (
+                analysis.catalysts.map((catalyst, i) => (
+                  <div key={i} className="p-2 rounded bg-muted/50">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold">
+                        {catalyst.event}
+                      </span>
+                      <span
+                        className={cn(
+                          "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
+                          catalyst.importance === "HIGH" &&
+                            "bg-red-500/10 text-red-500",
+                          catalyst.importance === "MEDIUM" &&
+                            "bg-amber-500/10 text-amber-500",
+                          catalyst.importance === "LOW" &&
+                            "bg-blue-500/10 text-blue-500"
+                        )}
+                      >
+                        {catalyst.importance}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">
+                      {catalyst.date}{" "}
+                      {catalyst.description ? `- ${catalyst.description}` : ""}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No upcoming catalysts found
+                </p>
+              )}
             </div>
           </div>
 
@@ -161,37 +214,77 @@ export function InfoCards() {
                 </svg>
               </div>
               <h3 className="font-semibold text-xs">Risk Profile</h3>
-              <span className="ml-auto px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase">
-                Medium
+              <span
+                className={cn(
+                  "ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                  analysis.riskProfile.volatility === "HIGH" &&
+                    "bg-red-500/10 text-red-500",
+                  analysis.riskProfile.volatility === "MEDIUM" &&
+                    "bg-amber-500/10 text-amber-500",
+                  analysis.riskProfile.volatility === "LOW" &&
+                    "bg-emerald-500/10 text-emerald-500"
+                )}
+              >
+                {analysis.riskProfile.volatility || "Medium"}
               </span>
             </div>
             <div className="space-y-2">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] text-muted-foreground">
-                    Volatility (Beta 1.82)
+                    Volatility{" "}
+                    {analysis.riskProfile.beta
+                      ? `(Beta ${analysis.riskProfile.beta.toFixed(2)})`
+                      : ""}
                   </span>
-                  <span className="text-[10px] font-bold text-amber-500">
-                    High
+                  <span
+                    className={cn(
+                      "text-[10px] font-bold",
+                      analysis.riskProfile.volatility === "HIGH" &&
+                        "text-red-500",
+                      analysis.riskProfile.volatility === "MEDIUM" &&
+                        "text-amber-500",
+                      analysis.riskProfile.volatility === "LOW" &&
+                        "text-emerald-500"
+                    )}
+                  >
+                    {analysis.riskProfile.volatility || "Medium"}
                   </span>
                 </div>
                 <div className="h-1 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full w-4/5 bg-amber-500 rounded-full" />
+                  <div
+                    className={cn(
+                      "h-full rounded-full",
+                      analysis.riskProfile.volatility === "HIGH" &&
+                        "w-4/5 bg-red-500",
+                      analysis.riskProfile.volatility === "MEDIUM" &&
+                        "w-3/5 bg-amber-500",
+                      analysis.riskProfile.volatility === "LOW" &&
+                        "w-2/5 bg-emerald-500"
+                    )}
+                  />
                 </div>
               </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-muted-foreground">
-                    Short Interest
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-500">
-                    Low
-                  </span>
+              {analysis.riskProfile.shortInterest !== undefined && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-muted-foreground">
+                      Short Interest
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-500">
+                      {analysis.riskProfile.shortInterest.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="h-1 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full"
+                      style={{
+                        width: `${Math.min(analysis.riskProfile.shortInterest, 100)}%`,
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="h-1 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full w-1/4 bg-emerald-500 rounded-full" />
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -220,20 +313,44 @@ export function InfoCards() {
                 <div className="text-[10px] text-muted-foreground mb-0.5">
                   Mkt Cap
                 </div>
-                <div className="text-sm font-bold">114T</div>
-                <div className="text-[9px] text-muted-foreground">110.4</div>
+                <div className="text-sm font-bold">
+                  {analysis.quote.marketCap
+                    ? `$${(analysis.quote.marketCap / 1e9).toFixed(1)}B`
+                    : "N/A"}
+                </div>
+                {analysis.quote.pe && (
+                  <div className="text-[9px] text-muted-foreground">
+                    P/E: {analysis.quote.pe.toFixed(1)}
+                  </div>
+                )}
               </div>
               <div>
                 <div className="text-[10px] text-muted-foreground mb-0.5">
-                  Div Yield
+                  EPS
                 </div>
-                <div className="text-sm font-bold">0.03%</div>
+                <div className="text-sm font-bold">
+                  {analysis.quote.eps
+                    ? `$${analysis.quote.eps.toFixed(2)}`
+                    : "N/A"}
+                </div>
               </div>
               <div>
                 <div className="text-[10px] text-muted-foreground mb-0.5">
-                  P/E
+                  Volume
                 </div>
-                <div className="text-sm font-bold">42M</div>
+                <div className="text-sm font-bold">
+                  {(analysis.quote.volume / 1e6).toFixed(1)}M
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-muted-foreground mb-0.5">
+                  52W Range
+                </div>
+                <div className="text-[9px] font-bold">
+                  {analysis.riskProfile.distance52WeekLow !== undefined
+                    ? `${analysis.riskProfile.distance52WeekLow.toFixed(0)}% from low`
+                    : "N/A"}
+                </div>
               </div>
             </div>
           </div>

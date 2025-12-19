@@ -18,29 +18,38 @@ export function getTickerInfo(ticker: string): TickerInfo {
  * @param magnitude - The magnitude of the prediction
  * @param shouldTrade - Whether trading is recommended
  * @param isPositive - Whether the prediction is positive
+ * @param wasCorrect - Whether the prediction was correct (after EOD validation)
+ * @param actualReturn - The actual return (after EOD validation)
  * @returns Sentiment object with label and color
  */
 export function getPredictionSentiment(
   magnitude: number,
   shouldTrade: boolean,
-  isPositive: boolean
+  isPositive: boolean,
+  wasCorrect?: boolean | null,
+  actualReturn?: number | null
 ): { label: string; color: "emerald" | "red" | "amber" | "gray" } {
-  if (!shouldTrade) return { label: "No Trade", color: "gray" };
+  const hasActual =
+    actualReturn !== null &&
+    actualReturn !== undefined &&
+    !Number.isNaN(actualReturn);
 
-  if (magnitude > 0.03) {
-    return {
-      label: isPositive ? "Strong Buy" : "Strong Sell",
-      color: isPositive ? "emerald" : "red",
-    };
+  // After market close / next day pre-open: show trade outcome if a trade was taken.
+  if (hasActual) {
+    if (!shouldTrade) return { label: "No Trade", color: "gray" };
+
+    // Prefer backend correctness if provided, otherwise infer from actualReturn sign.
+    const inferredWin = isPositive ? actualReturn > 0 : actualReturn < 0;
+    const win =
+      wasCorrect === true ? true : wasCorrect === false ? false : inferredWin;
+
+    return win
+      ? { label: "Win", color: "emerald" }
+      : { label: "Loss", color: "red" };
   }
 
-  if (magnitude > 0.015) {
-    return {
-      label: isPositive ? "Bullish" : "Bearish",
-      color: isPositive ? "emerald" : "red",
-    };
-  }
-
-  return { label: "Neutral", color: "amber" };
+  // Before market close: only show Trade / No Trade
+  return shouldTrade
+    ? { label: "Trade", color: isPositive ? "emerald" : "red" }
+    : { label: "No Trade", color: "gray" };
 }
-

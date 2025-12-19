@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { openaiClient } from "@/lib/api/clients/openai-client";
 import { MarketAnalyzer, StockScreener, StockAnalyzer } from "@/lib/trading";
+import { getEtDateString } from "@/lib/server/time";
+import { getOrComputeDailyCache } from "@/lib/server/api-cache";
 
 const CACHE_DURATION = 900; // 15 minutes
 const STALE_WHILE_REVALIDATE = 1800; // 30 minutes
@@ -17,48 +19,67 @@ const STALE_WHILE_REVALIDATE = 1800; // 30 minutes
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log("🎯 Starting AI Trading Opportunities analysis...");
+    const searchParams = request.nextUrl.searchParams;
+    const forceRefresh = searchParams.get("refresh") === "1";
+    const dateEt = getEtDateString(new Date());
 
-    // Analyze market conditions
-    const marketContext = await MarketAnalyzer.getMarketContext();
-    console.log("📊 Market context:", marketContext);
+    const cacheKey = "trading:opportunities:v1";
 
-    // Screen for quality candidates
-    const candidates = await StockScreener.screenCandidates(marketContext);
-    console.log(`🔍 Found ${candidates.length} candidates`);
+    const { data, cache } = await getOrComputeDailyCache({
+      key: cacheKey,
+      dateEt,
+      forceRefresh,
+      compute: async () => {
+        console.log("🎯 Starting AI Trading Opportunities analysis...");
 
-    if (candidates.length === 0) {
-      return createResponse({
-        opportunities: [],
-        marketContext,
-        message:
-          "No viable trading opportunities found in current market conditions",
-      });
-    }
+        // Analyze market conditions
+        const marketContext = await MarketAnalyzer.getMarketContext();
+        console.log("📊 Market context:", marketContext);
 
-    // Analyze top candidates with technical data
-    const analyzedCandidates = await StockAnalyzer.analyzeCandidates(
-      candidates.slice(0, 10)
-    );
-    console.log(
-      `📈 Analyzed ${analyzedCandidates.length} candidates in detail`
-    );
+        // Screen for quality candidates
+        const candidates = await StockScreener.screenCandidates(marketContext);
+        console.log(`🔍 Found ${candidates.length} candidates`);
 
-    // Let AI select best opportunities
-    const opportunities = await openaiClient.analyzeTradingOpportunities(
-      analyzedCandidates,
-      marketContext
-    );
-    console.log(`✅ AI selected ${opportunities.length} opportunities`);
+        if (candidates.length === 0) {
+          return {
+            opportunities: [],
+            marketContext,
+            message:
+              "No viable trading opportunities found in current market conditions",
+          };
+        }
 
-    // Enhance with real-time catalysts
-    if (opportunities.length > 0) {
-      await enhanceWithCatalysts(opportunities);
-    }
+        // Analyze top candidates with technical data
+        const analyzedCandidates = await StockAnalyzer.analyzeCandidates(
+          candidates.slice(0, 10)
+        );
+        console.log(
+          `📈 Analyzed ${analyzedCandidates.length} candidates in detail`
+        );
+
+        // Let AI select best opportunities
+        const opportunities = await openaiClient.analyzeTradingOpportunities(
+          analyzedCandidates,
+          marketContext
+        );
+        console.log(`✅ AI selected ${opportunities.length} opportunities`);
+
+        // Enhance with real-time catalysts
+        if (opportunities.length > 0) {
+          await enhanceWithCatalysts(opportunities);
+        }
+
+        return {
+          opportunities,
+          marketContext,
+        };
+      },
+    });
 
     return createResponse({
-      opportunities,
-      marketContext,
+      ...data,
+      cache,
+      tradingDateEt: dateEt,
     });
   } catch (error) {
     console.error("Error in trading opportunities endpoint:", error);

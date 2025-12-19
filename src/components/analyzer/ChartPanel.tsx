@@ -1,22 +1,172 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TradingChart } from "@/components/design-system/charts/TradingChart";
 import { cn } from "@/lib/utils";
+import { Lock } from "lucide-react";
+
+import type { ChartAnalysisData } from "@/hooks/useChartAnalysis";
 
 interface ChartPanelProps {
   data: any[];
+  symbol?: string;
+  timeframe?: string;
+  onTimeframeChange?: (timeframe: string) => void;
+  chartAnalysis?: ChartAnalysisData;
+  chartError?: string;
+  chartLoading?: boolean;
+  onAnalyze?: () => void;
+  analyzeLoading?: boolean;
+  aiReady?: boolean;
 }
 
-export function ChartPanel({ data }: ChartPanelProps) {
+export function ChartPanel({
+  data,
+  symbol,
+  timeframe: externalTimeframe,
+  onTimeframeChange,
+  chartAnalysis,
+  chartError,
+  chartLoading,
+  onAnalyze,
+  analyzeLoading,
+  aiReady,
+}: ChartPanelProps) {
   const [selectedView, setSelectedView] = useState("chart");
-  const [timeframe, setTimeframe] = useState("1D");
+  const [internalTimeframe, setInternalTimeframe] = useState("1M");
   const [chartType, setChartType] = useState<"candles" | "indicators">(
     "candles"
   );
+  const [showPaywallHint, setShowPaywallHint] = useState(false);
+  const [showLevels, setShowLevels] = useState(true);
+  const [showSMAs, setShowSMAs] = useState(false);
+  const [showVolume, setShowVolume] = useState(true);
+
+  const timeframe = externalTimeframe || internalTimeframe;
+  const handleTimeframeChange = (tf: string) => {
+    if (onTimeframeChange) {
+      onTimeframeChange(tf);
+    } else {
+      setInternalTimeframe(tf);
+    }
+  };
 
   const viewTabs = ["Chart", "Analysis", "Financials", "News", "Options"];
-  const timeframes = ["1D", "1W", "1M", "3M", "1Y", "All"];
+  const timeframes: Array<{ label: string; locked: boolean }> = [
+    { label: "1M", locked: false },
+    { label: "3M", locked: true },
+    { label: "6M", locked: true },
+    { label: "1Y", locked: true },
+    { label: "5Y", locked: true },
+  ];
+
+  useEffect(() => {
+    if (!showPaywallHint) return;
+    const t = setTimeout(() => setShowPaywallHint(false), 3500);
+    return () => clearTimeout(t);
+  }, [showPaywallHint]);
+
+  // Keep the chart clean: only show the most relevant levels on-chart.
+  // Full details are shown in the Strategy panel below the chart.
+  const priceLines = (() => {
+    if (!chartAnalysis) return [];
+
+    const current = chartAnalysis.currentPrice ?? 0;
+    const supports = [...chartAnalysis.keyLevels.support]
+      .filter((x) => Number.isFinite(x))
+      .sort((a, b) => a - b);
+    const resistances = [...chartAnalysis.keyLevels.resistance]
+      .filter((x) => Number.isFinite(x))
+      .sort((a, b) => a - b);
+
+    const nearestSupports = supports
+      .filter((s) => s <= current)
+      .slice(-2)
+      .reverse();
+    const nearestResistances = resistances
+      .filter((r) => r >= current)
+      .slice(0, 2);
+
+    const fibCandidates = [
+      { label: "Fib 38.2%", price: chartAnalysis.fibonacci.levels["38.2%"] },
+      { label: "Fib 50%", price: chartAnalysis.fibonacci.levels["50%"] },
+      { label: "Fib 61.8%", price: chartAnalysis.fibonacci.levels["61.8%"] },
+    ].filter((x) => Number.isFinite(x.price));
+
+    const nearestFib = fibCandidates.sort(
+      (a, b) => Math.abs(a.price - current) - Math.abs(b.price - current)
+    )[0];
+
+    return [
+      ...nearestResistances.map((p, idx) => ({
+        price: p,
+        color: "#ef4444",
+        title: `R${idx + 1}`,
+        lineStyle: 2,
+        lineWidth: 1,
+      })),
+      ...nearestSupports.map((p, idx) => ({
+        price: p,
+        color: "#22c55e",
+        title: `S${idx + 1}`,
+        lineStyle: 2,
+        lineWidth: 1,
+      })),
+      {
+        price: chartAnalysis.keyLevels.pivotPoint,
+        color: "#60a5fa",
+        title: "Pivot",
+        lineStyle: 3,
+        lineWidth: 1,
+      },
+      ...(nearestFib
+        ? [
+            {
+              price: nearestFib.price,
+              color: "#a855f7",
+              title: nearestFib.label,
+              lineStyle: 3,
+              lineWidth: 1,
+            },
+          ]
+        : []),
+    ];
+  })();
+
+  const computeSMA = (period: number) => {
+    if (!data || data.length < period) return [];
+    const out: Array<{ time: string | number; value: number }> = [];
+    const closes = data.map((d) => d.close);
+    let sum = 0;
+    for (let i = 0; i < closes.length; i++) {
+      sum += closes[i];
+      if (i >= period) sum -= closes[i - period];
+      if (i >= period - 1) {
+        out.push({ time: data[i].time, value: sum / period });
+      }
+    }
+    return out;
+  };
+
+  const overlays =
+    data && data.length > 0 && showSMAs
+      ? [
+          {
+            id: "sma20",
+            title: "SMA 20",
+            color: "#60a5fa",
+            lineWidth: 2,
+            data: computeSMA(20),
+          },
+          {
+            id: "sma50",
+            title: "SMA 50",
+            color: "#f59e0b",
+            lineWidth: 2,
+            data: computeSMA(50),
+          },
+        ].filter((o) => o.data && o.data.length > 0)
+      : [];
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -40,64 +190,149 @@ export function ChartPanel({ data }: ChartPanelProps) {
           ))}
         </div>
 
-        {/* Chart Type Toggle */}
-        <div className="flex gap-1">
-          <button
-            onClick={() => setChartType("candles")}
-            className={cn(
-              "px-3 py-1 rounded-lg text-xs font-medium transition-colors",
-              chartType === "candles"
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground"
-            )}
-          >
-            Candles
-          </button>
-          <button
-            onClick={() => setChartType("indicators")}
-            className={cn(
-              "px-3 py-1 rounded-lg text-xs font-medium transition-colors",
-              chartType === "indicators"
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground"
-            )}
-          >
-            Indicators
-          </button>
+        {/* Right controls */}
+        <div className="flex gap-2 items-center">
+          {/* Chart Controls */}
+          <div className="flex gap-1 border-r border-border pr-2">
+            <button
+              onClick={() => setShowLevels(!showLevels)}
+              className={cn(
+                "px-2 py-1 rounded text-[10px] font-medium transition-colors",
+                showLevels
+                  ? "bg-indigo-500/20 text-indigo-300"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Toggle key levels"
+            >
+              Levels
+            </button>
+            <button
+              onClick={() => setShowSMAs(!showSMAs)}
+              className={cn(
+                "px-2 py-1 rounded text-[10px] font-medium transition-colors",
+                showSMAs
+                  ? "bg-blue-500/20 text-blue-300"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Toggle moving averages"
+            >
+              SMAs
+            </button>
+            <button
+              onClick={() => setShowVolume(!showVolume)}
+              className={cn(
+                "px-2 py-1 rounded text-[10px] font-medium transition-colors",
+                showVolume
+                  ? "bg-emerald-500/20 text-emerald-300"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Toggle volume"
+            >
+              Volume
+            </button>
+          </div>
+
+          {onAnalyze && (
+            <button
+              onClick={onAnalyze}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border",
+                aiReady
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/15"
+                  : "bg-indigo-500/10 border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/15"
+              )}
+              disabled={analyzeLoading}
+              title="Run AI analysis (cached after first run)"
+            >
+              {analyzeLoading ? "Analyzing…" : aiReady ? "Analyzed" : "Analyze"}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Timeframe Selector - Only show for Chart view */}
       {selectedView === "chart" && (
-        <div className="flex gap-1 px-3 py-2 border-b border-border bg-muted/20">
-          {timeframes.map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              className={cn(
-                "px-3 py-1 rounded text-xs font-medium transition-colors",
-                timeframe === tf
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {tf}
-            </button>
-          ))}
+        <div className="px-3 py-2 border-b border-border bg-muted/20">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              {timeframes.map((tf) => {
+                const isActive = timeframe === tf.label;
+                const isLocked = tf.locked;
+                return (
+                  <button
+                    key={tf.label}
+                    onClick={() => {
+                      if (isLocked) {
+                        setShowPaywallHint(true);
+                        return;
+                      }
+                      handleTimeframeChange(tf.label);
+                    }}
+                    disabled={isLocked}
+                    className={cn(
+                      "px-3 py-1 rounded text-xs font-medium transition-colors inline-flex items-center gap-1",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                      isLocked &&
+                        "opacity-60 hover:text-muted-foreground cursor-not-allowed"
+                    )}
+                    title={
+                      isLocked ? "Upgrade to Pro to unlock this timeframe" : ""
+                    }
+                  >
+                    {tf.label}
+                    {isLocked && <Lock className="w-3 h-3" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 text-amber-500 font-bold uppercase">
+                Pro Timeframes Locked
+              </span>
+            </div>
+          </div>
+
+          {showPaywallHint && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Only <span className="font-semibold text-foreground">1D</span> is
+              available right now. Upgrade to{" "}
+              <span className="font-semibold text-foreground">Pro</span> to
+              unlock 1W/1M/3M/1Y/All strategies and chart markups.
+            </div>
+          )}
         </div>
       )}
 
       {/* Content Area */}
-      <div className="h-[450px] bg-background/50">
+      <div className="h-[450px] bg-background/50 relative">
         {/* Chart View */}
         {selectedView === "chart" && (
-          <TradingChart
-            data={data}
-            type="candlestick"
-            height={450}
-            showVolume={true}
-            showGrid={true}
-          />
+          <>
+            {chartLoading ? (
+              <div className="h-[450px] flex items-center justify-center text-sm text-muted-foreground">
+                Loading chart…
+              </div>
+            ) : data.length === 0 ? (
+              <div className="h-[450px] flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
+                {chartError
+                  ? `Chart unavailable: ${chartError}`
+                  : "No chart data available."}
+              </div>
+            ) : (
+              <TradingChart
+                data={data}
+                type="candlestick"
+                height={450}
+                showVolume={showVolume}
+                showGrid={true}
+                overlays={overlays}
+                priceLines={showLevels ? priceLines : []}
+              />
+            )}
+          </>
         )}
 
         {/* Analysis View */}
@@ -105,44 +340,104 @@ export function ChartPanel({ data }: ChartPanelProps) {
           <div className="p-6 space-y-4 overflow-y-auto h-full">
             <div>
               <h3 className="font-semibold text-sm mb-3">Technical Analysis</h3>
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Moving Averages</span>
-                    <span className="text-xs px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 font-bold">
-                      BULLISH
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Price above 20, 50, and 200-day moving averages. Strong
-                    uptrend confirmed.
-                  </p>
+              {!chartAnalysis ? (
+                <div className="text-sm text-muted-foreground">
+                  No chart analysis available.
                 </div>
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">RSI (14)</span>
-                    <span className="text-xs px-2 py-1 rounded bg-amber-500/10 text-amber-500 font-bold">
-                      NEUTRAL
-                    </span>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">
+                        Market Structure
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs px-2 py-1 rounded font-bold uppercase",
+                          chartAnalysis.marketStructure.trend === "UPTREND" &&
+                            "bg-emerald-500/10 text-emerald-500",
+                          chartAnalysis.marketStructure.trend === "DOWNTREND" &&
+                            "bg-red-500/10 text-red-500",
+                          chartAnalysis.marketStructure.trend === "SIDEWAYS" &&
+                            "bg-amber-500/10 text-amber-500"
+                        )}
+                      >
+                        {chartAnalysis.marketStructure.trend}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {chartAnalysis.marketStructure.description}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    RSI at 62.4, indicating neither overbought nor oversold
-                    conditions.
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">MACD</span>
-                    <span className="text-xs px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 font-bold">
-                      BULLISH
-                    </span>
+
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Key Levels</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <div className="text-muted-foreground mb-1">
+                          Support
+                        </div>
+                        {chartAnalysis.keyLevels.support.length > 0 ? (
+                          chartAnalysis.keyLevels.support.map((s, i) => (
+                            <div key={i} className="font-mono text-green-500">
+                              S{i + 1}: ${s.toFixed(2)}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-muted-foreground">N/A</div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground mb-1">
+                          Resistance
+                        </div>
+                        {chartAnalysis.keyLevels.resistance.length > 0 ? (
+                          chartAnalysis.keyLevels.resistance.map((r, i) => (
+                            <div key={i} className="font-mono text-red-500">
+                              R{i + 1}: ${r.toFixed(2)}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-muted-foreground">N/A</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    MACD line above signal line with positive histogram. Bullish
-                    momentum.
-                  </p>
+
+                  {chartAnalysis.patterns.length > 0 ? (
+                    <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">Patterns</span>
+                      </div>
+                      <div className="space-y-2">
+                        {chartAnalysis.patterns.slice(0, 3).map((p, i) => (
+                          <div key={i} className="text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">{p.type}</span>
+                              <span className="text-muted-foreground">
+                                {p.confidence}
+                              </span>
+                            </div>
+                            <div className="text-muted-foreground">
+                              Target: ${p.target.toFixed(2)} • Invalidation: $
+                              {p.invalidation.toFixed(2)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                      <div className="text-sm font-medium mb-1">Patterns</div>
+                      <div className="text-xs text-muted-foreground">
+                        No high-confidence patterns detected on this timeframe.
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -151,55 +446,11 @@ export function ChartPanel({ data }: ChartPanelProps) {
         {selectedView === "financials" && (
           <div className="p-6 space-y-4 overflow-y-auto h-full">
             <div>
-              <h3 className="font-semibold text-sm mb-3">Financial Metrics</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Revenue (TTM)
-                  </div>
-                  <div className="text-lg font-bold">$13.5B</div>
-                  <div className="text-xs text-emerald-500 font-medium">
-                    +58.07% YoY
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Net Income
-                  </div>
-                  <div className="text-lg font-bold">$6.04B</div>
-                  <div className="text-xs text-emerald-500 font-medium">
-                    +66.09% YoY
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="text-xs text-muted-foreground mb-1">EPS</div>
-                  <div className="text-lg font-bold">$4.12</div>
-                  <div className="text-xs text-emerald-500 font-medium">
-                    +65.2% YoY
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    P/E Ratio
-                  </div>
-                  <div className="text-lg font-bold">110.4</div>
-                  <div className="text-xs text-muted-foreground">
-                    Above sector avg
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Market Cap
-                  </div>
-                  <div className="text-lg font-bold">$1.14T</div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Dividend Yield
-                  </div>
-                  <div className="text-lg font-bold">0.03%</div>
-                </div>
-              </div>
+              <h3 className="font-semibold text-sm mb-2">Financial Metrics</h3>
+              <p className="text-sm text-muted-foreground">
+                Financials are shown in the right panel. (No mock financial data
+                is displayed inside the chart.)
+              </p>
             </div>
           </div>
         )}
@@ -208,43 +459,10 @@ export function ChartPanel({ data }: ChartPanelProps) {
         {selectedView === "news" && (
           <div className="p-6 space-y-3 overflow-y-auto h-full">
             <h3 className="font-semibold text-sm mb-3">Latest News</h3>
-            <div className="space-y-3">
-              {[
-                {
-                  title: "NVIDIA announces breakthrough in AI chip performance",
-                  time: "2 hours ago",
-                  source: "Reuters",
-                },
-                {
-                  title:
-                    "Q4 earnings beat expectations with 58% revenue growth",
-                  time: "1 day ago",
-                  source: "Bloomberg",
-                },
-                {
-                  title: "New data center contracts worth $2.5B signed",
-                  time: "2 days ago",
-                  source: "CNBC",
-                },
-                {
-                  title: "Analyst upgrades price target to $600",
-                  time: "3 days ago",
-                  source: "Morgan Stanley",
-                },
-              ].map((news, i) => (
-                <div
-                  key={i}
-                  className="p-3 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors cursor-pointer"
-                >
-                  <h4 className="text-sm font-medium mb-1">{news.title}</h4>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{news.source}</span>
-                    <span>•</span>
-                    <span>{news.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              News is shown in the main News section below. (No mock news is
+              displayed inside the chart.)
+            </p>
           </div>
         )}
 
@@ -252,39 +470,11 @@ export function ChartPanel({ data }: ChartPanelProps) {
         {selectedView === "options" && (
           <div className="p-6 space-y-4 overflow-y-auto h-full">
             <div>
-              <h3 className="font-semibold text-sm mb-3">Options Chain</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-2">
-                  <div className="w-20">Strike</div>
-                  <div className="w-20 text-right">Calls</div>
-                  <div className="w-20 text-right">Puts</div>
-                  <div className="w-20 text-right">IV</div>
-                </div>
-                {[
-                  { strike: "450", calls: "12.50", puts: "3.20", iv: "32%" },
-                  { strike: "460", calls: "8.30", puts: "5.80", iv: "35%" },
-                  { strike: "470", calls: "4.90", puts: "9.10", iv: "38%" },
-                  { strike: "480", calls: "2.40", puts: "14.50", iv: "42%" },
-                ].map((option, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between text-sm p-2 rounded hover:bg-muted/30"
-                  >
-                    <div className="w-20 font-mono font-bold">
-                      ${option.strike}
-                    </div>
-                    <div className="w-20 text-right text-emerald-500 font-mono">
-                      ${option.calls}
-                    </div>
-                    <div className="w-20 text-right text-red-500 font-mono">
-                      ${option.puts}
-                    </div>
-                    <div className="w-20 text-right text-muted-foreground font-mono text-xs">
-                      {option.iv}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <h3 className="font-semibold text-sm mb-2">Options Chain</h3>
+              <p className="text-sm text-muted-foreground">
+                Options data is not loaded here yet. (No mock options chain is
+                displayed.)
+              </p>
             </div>
           </div>
         )}

@@ -20,7 +20,12 @@ export function useMarketInsights(
   mlPrediction?: any
 ) {
   return useQuery<MarketInsight>({
-    queryKey: ["market-insights", stories.length, technicalData?.rsi, mlPrediction?.direction],
+    queryKey: [
+      "market-insights",
+      stories.length,
+      technicalData?.rsi,
+      mlPrediction?.direction,
+    ],
     queryFn: async () => {
       const response = await fetch("/api/market/insights", {
         method: "POST",
@@ -46,8 +51,9 @@ export function useMarketInsights(
       return result.data;
     },
     enabled: stories.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes
+    // Server-side (DB) cached by request inputs; avoid repeated paid calls
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
   });
 }
-
