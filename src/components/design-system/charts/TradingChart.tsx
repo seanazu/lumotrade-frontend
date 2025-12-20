@@ -60,6 +60,13 @@ export interface LineDataPoint {
   value: number;
 }
 
+export interface StrategyZone {
+  type: "entry" | "stop" | "target";
+  price: number;
+  label: string;
+  color: string;
+}
+
 export interface TradingChartProps {
   data: CandleData[];
   type?: "candlestick" | "line" | "area";
@@ -82,6 +89,11 @@ export interface TradingChartProps {
     lineWidth?: number;
     lineStyle?: number;
   }>;
+  strategyZones?: StrategyZone[];
+  visibleRange?: {
+    from: Time;
+    to: Time;
+  };
   className?: string;
   onCrosshairMove?: (price: number | null, time: Time | null) => void;
 }
@@ -95,6 +107,8 @@ export function TradingChart({
   predictions,
   overlays,
   priceLines,
+  strategyZones,
+  visibleRange,
   className = "",
   onCrosshairMove,
 }: TradingChartProps) {
@@ -334,7 +348,7 @@ export function TradingChart({
         if (!overlay.data || overlay.data.length === 0) continue;
         const s = chart.addSeries(LineSeries, {
           color: overlay.color,
-          lineWidth: overlay.lineWidth ?? 2,
+          lineWidth: (overlay.lineWidth ?? 2) as any,
           lineStyle: (overlay.lineStyle ?? 0) as any,
           crosshairMarkerVisible: false,
           title: overlay.title,
@@ -359,7 +373,7 @@ export function TradingChart({
           mainSeriesRef.current.createPriceLine({
             price: pl.price,
             color: pl.color,
-            lineWidth: pl.lineWidth ?? 1,
+            lineWidth: (pl.lineWidth ?? 1) as any,
             lineStyle: (pl.lineStyle ?? 2) as any,
             axisLabelVisible: true,
             title: pl.title,
@@ -367,6 +381,24 @@ export function TradingChart({
         } catch (e) {
           // If a line fails, keep chart rendering
           console.warn("Failed to create price line", e);
+        }
+      }
+    }
+
+    // Add strategy zones (entry, stop, targets)
+    if (strategyZones && strategyZones.length > 0 && mainSeriesRef.current) {
+      for (const zone of strategyZones) {
+        try {
+          mainSeriesRef.current.createPriceLine({
+            price: zone.price,
+            color: zone.color,
+            lineWidth: (zone.type === "entry" ? 2 : 1) as any,
+            lineStyle: (zone.type === "entry" ? 0 : 2) as any,
+            axisLabelVisible: true,
+            title: zone.label,
+          });
+        } catch (e) {
+          console.warn("Failed to create strategy zone", e);
         }
       }
     }
@@ -390,8 +422,12 @@ export function TradingChart({
       });
     }
 
-    // Fit content
-    chart.timeScale().fitContent();
+    // Apply visible range or fit content
+    if (visibleRange) {
+      chart.timeScale().setVisibleRange(visibleRange);
+    } else {
+      chart.timeScale().fitContent();
+    }
 
     // Handle resize
     const handleResize = () => {
@@ -417,6 +453,8 @@ export function TradingChart({
     predictions,
     overlays,
     priceLines,
+    strategyZones,
+    visibleRange,
     isDark,
     onCrosshairMove,
   ]);

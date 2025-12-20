@@ -17,6 +17,7 @@ import {
 import { Badge } from "../atoms/Badge";
 import { ThemeToggle } from "../atoms/ThemeToggle";
 import { AIChatToggle } from "../atoms/AIChatToggle";
+import { UserMenu } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
 
 export interface TopBarProps {
@@ -162,14 +163,10 @@ const TopBar: React.FC<TopBarProps> = ({
               </motion.div>
             </Link>
 
-            {/* User Avatar */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="ml-1 w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center ring-1 ring-primary/20 hover:ring-primary/40 transition-all"
-            >
-              <User className="h-3.5 w-3.5 text-primary" />
-            </motion.button>
+            {/* User Menu */}
+            <div className="ml-1">
+              <UserMenu />
+            </div>
           </div>
         </div>
       </motion.header>

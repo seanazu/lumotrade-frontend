@@ -88,11 +88,10 @@ export function AssetCard({
             )}
           >
             {isPositive ? "+" : ""}
-            {changePercent.toFixed(2)}%
+            {Number(changePercent).toFixed(2)}%
           </div>
         </div>
       </div>
     </motion.div>
   );
 }
-

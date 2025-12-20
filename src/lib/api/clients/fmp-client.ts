@@ -852,6 +852,155 @@ class FMPClient {
       return null;
     }
   }
+
+  /**
+   * Get comprehensive financial data for fundamental analysis
+   */
+  async getComprehensiveFinancials(symbol: string) {
+    if (!this.isConfigured()) {
+      console.warn("FMP API not configured.");
+      return null;
+    }
+
+    try {
+      const [
+        incomeAnnual,
+        incomeQuarterly,
+        balanceAnnual,
+        balanceQuarterly,
+        cashFlowAnnual,
+        cashFlowQuarterly,
+        ratios,
+        keyMetrics,
+      ] = await Promise.all([
+        this.fetchFMP(`income-statement/${symbol}?limit=5`),
+        this.fetchFMP(`income-statement/${symbol}?period=quarter&limit=8`),
+        this.fetchFMP(`balance-sheet-statement/${symbol}?limit=5`),
+        this.fetchFMP(
+          `balance-sheet-statement/${symbol}?period=quarter&limit=8`
+        ),
+        this.fetchFMP(`cash-flow-statement/${symbol}?limit=5`),
+        this.fetchFMP(`cash-flow-statement/${symbol}?period=quarter&limit=8`),
+        this.fetchFMP(`ratios/${symbol}?limit=5`),
+        this.fetchFMP(`key-metrics/${symbol}?limit=5`),
+      ]);
+
+      return {
+        incomeStatements: {
+          annual: incomeAnnual || [],
+          quarterly: incomeQuarterly || [],
+        },
+        balanceSheets: {
+          annual: balanceAnnual || [],
+          quarterly: balanceQuarterly || [],
+        },
+        cashFlowStatements: {
+          annual: cashFlowAnnual || [],
+          quarterly: cashFlowQuarterly || [],
+        },
+        ratios: ratios?.[0] || null,
+        keyMetrics: keyMetrics?.[0] || null,
+      };
+    } catch (error) {
+      console.error(
+        `Error fetching comprehensive financials for ${symbol}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Get analyst ratings and price targets
+   */
+  async getAnalystRatings(symbol: string) {
+    if (!this.isConfigured()) return null;
+
+    try {
+      const [ratings, priceTarget] = await Promise.all([
+        this.fetchFMP(`grade/${symbol}?limit=10`),
+        this.fetchFMP(`price-target/${symbol}`),
+      ]);
+
+      return {
+        ratings: ratings || [],
+        priceTarget: priceTarget?.[0] || null,
+      };
+    } catch (error) {
+      console.error(`Error fetching analyst data for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get insider trading activity
+   */
+  async getInsiderTrading(symbol: string) {
+    if (!this.isConfigured()) return [];
+
+    try {
+      const insiderTrades = await this.fetchFMP(
+        `insider-trading?symbol=${symbol}&limit=50`
+      );
+      return insiderTrades || [];
+    } catch (error) {
+      console.error(`Error fetching insider trading for ${symbol}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get institutional ownership
+   */
+  async getInstitutionalOwnership(symbol: string) {
+    if (!this.isConfigured()) return [];
+
+    try {
+      const institutional = await this.fetchFMP(
+        `institutional-holder/${symbol}?limit=20`
+      );
+      return institutional || [];
+    } catch (error) {
+      console.error(
+        `Error fetching institutional ownership for ${symbol}:`,
+        error
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Helper to fetch from FMP with rate limiting and caching
+   */
+  private async fetchFMP(endpoint: string): Promise<any> {
+    const cacheKey = `fmp:${endpoint}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
+    const allowed = await rateLimiter.checkLimit("fmp", rateLimitConfigs.fmp);
+    if (!allowed) {
+      console.warn("FMP rate limit exceeded.");
+      return null;
+    }
+
+    const url = buildUrl(`${this.baseUrl}/${endpoint}`, {
+      apikey: this.apiKey,
+    });
+
+    try {
+      const response = await fetchWithRetry(url, {
+        timeout: 10000,
+        retries: 2,
+      });
+
+      // Cache for 1 hour
+      cache.set(cacheKey, response, 3600);
+      return response;
+    } catch (error) {
+      console.error(`FMP API error for ${endpoint}:`, error);
+      return null;
+    }
+  }
 }
 
 // Singleton instance

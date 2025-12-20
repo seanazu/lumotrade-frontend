@@ -2,15 +2,17 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ReactNode } from "react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { UserProvider } from "@/contexts/UserContext";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 import type { Metadata, Viewport } from "next";
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({ 
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   display: "swap",
@@ -92,11 +94,17 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
+    >
       <body className="font-sans bg-background text-foreground antialiased">
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <UserProvider>
+          <ThemeProvider>
+            <AuthGuard>{children}</AuthGuard>
+          </ThemeProvider>
+        </UserProvider>
       </body>
     </html>
   );

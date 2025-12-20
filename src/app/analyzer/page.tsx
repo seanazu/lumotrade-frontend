@@ -9,12 +9,7 @@ import { Skeleton } from "@/components/design-system/atoms/Skeleton";
 import { StockHeader } from "@/components/analyzer/StockHeader";
 import { ChartPanel } from "@/components/analyzer/ChartPanel";
 import { TradingSignal } from "@/components/analyzer/TradingSignal";
-import { KeyIndicators } from "@/components/analyzer/KeyIndicators";
-import { FinancialsCard } from "@/components/analyzer/FinancialsCard";
-import { EarningsCard } from "@/components/analyzer/EarningsCard";
-import { AIInput } from "@/components/analyzer/AIInput";
 import { NewsSection } from "@/components/analyzer/NewsSection";
-import { RoadmapSection } from "@/components/analyzer/RoadmapSection";
 import { InfoCards } from "@/components/analyzer/InfoCards";
 import { MLModelTrainingPrompt } from "@/components/analyzer/MLModelTrainingPrompt";
 import { useStockAnalysis } from "@/hooks/useStockAnalysis";
@@ -23,7 +18,12 @@ import { useChartAnalysis } from "@/hooks/useChartAnalysis";
 import { useStockQuote } from "@/hooks/useStockQuote";
 import { useTradingSignal } from "@/hooks/useTradingSignal";
 import { useAIThesis } from "@/hooks/useAIThesis";
+import { useResearch } from "@/hooks/useResearch";
+import { useSelectedStrategy } from "@/hooks/useSelectedStrategy";
 import { TradingPlanCard } from "@/components/analyzer/TradingPlanCard";
+import { ResearchPanel } from "@/components/analyzer/ResearchPanel";
+import { StrategyDebugPanel } from "@/components/analyzer/StrategyDebugPanel";
+import type { TradingStrategy } from "@/types/strategies";
 
 function StockAnalyzer() {
   const router = useRouter();
@@ -75,9 +75,20 @@ function StockAnalyzer() {
 
   // AI analysis is opt-in (button click)
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState<
+    TradingStrategy | undefined
+  >();
+
   useEffect(() => {
     setAiEnabled(false);
+    setSelectedStrategy(undefined);
   }, [symbol, timeframe]);
+
+  // Handler to save a selected strategy
+  const handleSaveStrategy = (strategy: TradingStrategy) => {
+    saveStrategy(strategy);
+    setSelectedStrategy(strategy);
+  };
 
   // Fetch professional chart analysis with levels and trading plan
   const {
@@ -88,6 +99,23 @@ function StockAnalyzer() {
 
   // AI Thesis loads only when aiEnabled is true
   const { isLoading: aiThesisLoading } = useAIThesis(symbol, aiEnabled);
+
+  // Comprehensive research (includes strategies when aiEnabled)
+  const {
+    data: research,
+    isLoading: researchLoading,
+    error: researchError,
+  } = useResearch(symbol, timeframe, {
+    includeStrategies: aiEnabled,
+    enabled: aiEnabled,
+  });
+
+  // Trading signal is loaded separately so the page isn't blocked by it
+  const { data: tradingSignal, isLoading: tradingSignalLoading } =
+    useTradingSignal(symbol, !!symbol);
+
+  // Fetch and manage saved strategy
+  const { savedStrategy, saveStrategy, isSaving } = useSelectedStrategy(symbol);
 
   // Error state - user-friendly error message
   // Only show full-page error if we have *nothing* to show.
@@ -141,10 +169,6 @@ function StockAnalyzer() {
 
   // No mock/fallback chart data: show empty + error UI if API fails
   const displayChartData = chartData && chartData.length > 0 ? chartData : [];
-
-  // Trading signal is loaded separately so the page isn't blocked by it
-  const { data: tradingSignal, isLoading: tradingSignalLoading } =
-    useTradingSignal(symbol, !!symbol);
 
   // Prepare indicators for KeyIndicators component
   const indicators = analysis
@@ -204,11 +228,11 @@ function StockAnalyzer() {
       )}
 
       {/* Main Content */}
-      <div className="max-w-screen-2xl mx-auto px-6 py-6">
+      <div className="max-w-screen-2xl mx-auto px-6 py-6 space-y-6">
+        {/* Top Row: Chart + Trading Plan Card (same height) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column (2/3 width) */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Chart */}
+          {/* Left: Chart (2/3 width) */}
+          <div className="lg:col-span-2">
             <ChartPanel
               data={displayChartData}
               symbol={symbol}
@@ -224,17 +248,59 @@ function StockAnalyzer() {
               }
               chartLoading={chartLoading || chartAnalysisLoading}
               onAnalyze={() => setAiEnabled(true)}
-              analyzeLoading={aiThesisLoading}
-              aiReady={aiEnabled && !aiThesisLoading}
+              analyzeLoading={aiThesisLoading || researchLoading}
+              aiReady={aiEnabled && !aiThesisLoading && !researchLoading}
+              selectedStrategy={selectedStrategy}
             />
+          </div>
 
-            {/* Trading Plan Card */}
-            {chartAnalysis ? (
-              <TradingPlanCard analysis={chartAnalysis} />
+          {/* Right: Trading Plan Card (1/3 width) - matches chart height */}
+          <div className="lg:col-span-1">
+            {savedStrategy ? (
+              <TradingPlanCard
+                strategy={savedStrategy}
+                currentPrice={quote?.price || chartAnalysis?.currentPrice}
+                timeframe={timeframe}
+              />
+            ) : chartAnalysis ? (
+              <TradingPlanCard analysis={chartAnalysis} timeframe={timeframe} />
             ) : chartAnalysisLoading ? (
-              <Skeleton className="h-32 rounded-xl" />
+              <Skeleton className="h-full rounded-xl" />
             ) : null}
+          </div>
+        </div>
 
+        {/* AI Research Panel - Full width below chart and trading plan */}
+        {research ? (
+          <ResearchPanel
+            research={research}
+            onSelectStrategy={setSelectedStrategy}
+            onSaveStrategy={handleSaveStrategy}
+            selectedStrategyId={selectedStrategy?.id}
+            isSaving={isSaving}
+          />
+        ) : researchLoading ? (
+          <div className="bg-card rounded-xl border border-border p-8">
+            <div className="text-center">
+              <div className="text-sm text-muted-foreground mb-2">
+                🤖 AI is analyzing {symbol}...
+              </div>
+              <div className="flex justify-center gap-1 mb-4">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-150"></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-300"></div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Generating 5 distinct strategies based on comprehensive
+                analysis...
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Bottom Section: Trading Signal, News, ML Model */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* Trading Signal */}
             {tradingSignal ? (
               <TradingSignal
@@ -262,87 +328,17 @@ function StockAnalyzer() {
             ) : (
               <Skeleton className="h-48 rounded-xl" />
             )}
+          </div>
 
-            {/* Roadmap */}
-            {analysis ? (
-              <RoadmapSection
-                roadmap={analysis.catalysts.map((c) => ({
-                  quarter: c.date,
-                  event: c.event,
-                }))}
-              />
-            ) : (
-              <Skeleton className="h-48 rounded-xl" />
-            )}
-
+          <div className="lg:col-span-1">
             {/* ML Model Training Prompt */}
             <MLModelTrainingPrompt symbol={symbol} />
           </div>
-
-          {/* Right Column (1/3 width) */}
-          <div className="space-y-4">
-            {/* Key Indicators */}
-            {analysis ? (
-              <KeyIndicators indicators={indicators} />
-            ) : (
-              <Skeleton className="h-48 rounded-xl" />
-            )}
-
-            {/* Financials */}
-            {analysis ? (
-              <FinancialsCard
-                revenue={
-                  analysis.financials.revenue
-                    ? `$${(analysis.financials.revenue / 1e9).toFixed(2)}B`
-                    : "N/A"
-                }
-                revenueChange={
-                  analysis.financials.revenueGrowth
-                    ? `${analysis.financials.revenueGrowth > 0 ? "+" : ""}${analysis.financials.revenueGrowth.toFixed(2)}%`
-                    : "N/A"
-                }
-                eps={
-                  analysis.financials.eps
-                    ? `$${analysis.financials.eps.toFixed(2)}`
-                    : "N/A"
-                }
-                epsChange={
-                  analysis.financials.epsGrowth
-                    ? `${analysis.financials.epsGrowth > 0 ? "+" : ""}${analysis.financials.epsGrowth.toFixed(2)}%`
-                    : "N/A"
-                }
-              />
-            ) : (
-              <Skeleton className="h-32 rounded-xl" />
-            )}
-
-            {/* Upcoming Earnings */}
-            {analysis ? (
-              analysis.earnings.nextDate ? (
-                <EarningsCard
-                  date={analysis.earnings.nextDate}
-                  timing={analysis.earnings.nextTiming || "TBD"}
-                  estimate={
-                    analysis.earnings.estimate
-                      ? `$${analysis.earnings.estimate.toFixed(2)}`
-                      : "N/A"
-                  }
-                  actual={
-                    analysis.earnings.lastActual
-                      ? `$${analysis.earnings.lastActual.toFixed(2)}`
-                      : "N/A"
-                  }
-                />
-              ) : null
-            ) : (
-              <Skeleton className="h-40 rounded-xl" />
-            )}
-
-            {/* AI Input */}
-            <AIInput symbol={symbol} />
-          </div>
         </div>
       </div>
+
+      {/* Debug Panel - Remove in production */}
+      <StrategyDebugPanel symbol={symbol} />
     </div>
   );
 }

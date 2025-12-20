@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { Lock } from "lucide-react";
 
 import type { ChartAnalysisData } from "@/hooks/useChartAnalysis";
+import type { TradingStrategy } from "@/types/strategies";
+import type { StrategyZone } from "@/components/design-system/charts/TradingChart";
 
 interface ChartPanelProps {
   data: any[];
@@ -18,6 +20,7 @@ interface ChartPanelProps {
   onAnalyze?: () => void;
   analyzeLoading?: boolean;
   aiReady?: boolean;
+  selectedStrategy?: TradingStrategy;
 }
 
 export function ChartPanel({
@@ -31,6 +34,7 @@ export function ChartPanel({
   onAnalyze,
   analyzeLoading,
   aiReady,
+  selectedStrategy,
 }: ChartPanelProps) {
   const [selectedView, setSelectedView] = useState("chart");
   const [internalTimeframe, setInternalTimeframe] = useState("1M");
@@ -51,7 +55,7 @@ export function ChartPanel({
     }
   };
 
-  const viewTabs = ["Chart", "Analysis", "Financials", "News", "Options"];
+  const viewTabs = ["Chart", "Analysis"];
   const timeframes: Array<{ label: string; locked: boolean }> = [
     { label: "1M", locked: false },
     { label: "3M", locked: true },
@@ -66,8 +70,7 @@ export function ChartPanel({
     return () => clearTimeout(t);
   }, [showPaywallHint]);
 
-  // Keep the chart clean: only show the most relevant levels on-chart.
-  // Full details are shown in the Strategy panel below the chart.
+  // Build price lines: supports, resistances, and pattern targets
   const priceLines = (() => {
     if (!chartAnalysis) return [];
 
@@ -81,23 +84,13 @@ export function ChartPanel({
 
     const nearestSupports = supports
       .filter((s) => s <= current)
-      .slice(-2)
+      .slice(-3)
       .reverse();
     const nearestResistances = resistances
       .filter((r) => r >= current)
-      .slice(0, 2);
+      .slice(0, 3);
 
-    const fibCandidates = [
-      { label: "Fib 38.2%", price: chartAnalysis.fibonacci.levels["38.2%"] },
-      { label: "Fib 50%", price: chartAnalysis.fibonacci.levels["50%"] },
-      { label: "Fib 61.8%", price: chartAnalysis.fibonacci.levels["61.8%"] },
-    ].filter((x) => Number.isFinite(x.price));
-
-    const nearestFib = fibCandidates.sort(
-      (a, b) => Math.abs(a.price - current) - Math.abs(b.price - current)
-    )[0];
-
-    return [
+    const lines = [
       ...nearestResistances.map((p, idx) => ({
         price: p,
         color: "#ef4444",
@@ -112,25 +105,99 @@ export function ChartPanel({
         lineStyle: 2,
         lineWidth: 1,
       })),
-      {
-        price: chartAnalysis.keyLevels.pivotPoint,
-        color: "#60a5fa",
-        title: "Pivot",
+    ];
+
+    // Add pattern targets for high-confidence patterns
+    const highConfPatterns = chartAnalysis.patterns.filter(
+      (p) => p.confidence === "HIGH"
+    );
+    highConfPatterns.slice(0, 2).forEach((pattern, idx) => {
+      lines.push({
+        price: pattern.target,
+        color: "#a855f7",
+        title: `${pattern.type} Target`,
         lineStyle: 3,
         lineWidth: 1,
-      },
-      ...(nearestFib
-        ? [
-            {
-              price: nearestFib.price,
-              color: "#a855f7",
-              title: nearestFib.label,
-              lineStyle: 3,
-              lineWidth: 1,
-            },
-          ]
-        : []),
-    ];
+      });
+    });
+
+    // Add trading plan entry and targets
+    if (chartAnalysis.tradingPlan.entries.length > 0) {
+      const mainEntry = chartAnalysis.tradingPlan.entries[0];
+      lines.push({
+        price: mainEntry.price,
+        color: "#3b82f6",
+        title: "Entry",
+        lineStyle: 0,
+        lineWidth: 2,
+      });
+    }
+
+    if (chartAnalysis.tradingPlan.targets.length > 0) {
+      chartAnalysis.tradingPlan.targets.slice(0, 2).forEach((target, idx) => {
+        lines.push({
+          price: target.level,
+          color: "#10b981",
+          title: `TP${idx + 1}`,
+          lineStyle: 2,
+          lineWidth: 1,
+        });
+      });
+    }
+
+    // Add stop loss
+    lines.push({
+      price: chartAnalysis.tradingPlan.stopLoss.level,
+      color: "#f59e0b",
+      title: "Stop Loss",
+      lineStyle: 2,
+      lineWidth: 1,
+    });
+
+    return lines;
+  })();
+
+  // Build strategy zones from selected strategy
+  const strategyZones: StrategyZone[] = (() => {
+    if (!selectedStrategy) return [];
+
+    const zones: StrategyZone[] = [];
+
+    // Entry zone
+    if (selectedStrategy.entries && selectedStrategy.entries.length > 0) {
+      selectedStrategy.entries.forEach((entry, idx) => {
+        zones.push({
+          type: "entry",
+          price: entry.price,
+          label: `Entry ${idx + 1}`,
+          color: "#6366f1", // Indigo
+        });
+      });
+    }
+
+    // Targets
+    if (selectedStrategy.targets && selectedStrategy.targets.length > 0) {
+      selectedStrategy.targets.forEach((target, idx) => {
+        zones.push({
+          type: "target",
+          price: target.price,
+          label: `TP${idx + 1}`,
+          color: "#10b981", // Emerald
+        });
+      });
+    }
+
+    // Stop Loss
+    if (selectedStrategy.stopLoss) {
+      zones.push({
+        type: "stop",
+        price: selectedStrategy.stopLoss.initial.price,
+        label: "Stop",
+        color: "#f59e0b", // Amber
+      });
+    }
+
+    return zones;
   })();
 
   const computeSMA = (period: number) => {
@@ -169,9 +236,9 @@ export function ChartPanel({
       : [];
 
   return (
-    <div className="bg-card rounded-xl border border-border overflow-hidden">
+    <div className="bg-card h-full rounded-xl border border-border overflow-hidden flex flex-col">
       {/* Top Controls */}
-      <div className="flex items-center justify-between p-3 border-b border-border">
+      <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
         {/* View Tabs */}
         <div className="flex gap-1">
           {viewTabs.map((tab) => (
@@ -252,7 +319,7 @@ export function ChartPanel({
 
       {/* Timeframe Selector - Only show for Chart view */}
       {selectedView === "chart" && (
-        <div className="px-3 py-2 border-b border-border bg-muted/20">
+        <div className="px-3 py-2 border-b border-border bg-muted/20 flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               {timeframes.map((tf) => {
@@ -289,34 +356,34 @@ export function ChartPanel({
             </div>
 
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 text-amber-500 font-bold uppercase">
-                Pro Timeframes Locked
+              <span className="text-[10px] text-muted-foreground">
+                💡 Chart loads 2 years • Zoom changes visible range
               </span>
             </div>
           </div>
 
           {showPaywallHint && (
             <div className="mt-2 text-xs text-muted-foreground">
-              Only <span className="font-semibold text-foreground">1D</span> is
-              available right now. Upgrade to{" "}
+              Only <span className="font-semibold text-foreground">1M</span>{" "}
+              timeframe is available. Upgrade to{" "}
               <span className="font-semibold text-foreground">Pro</span> to
-              unlock 1W/1M/3M/1Y/All strategies and chart markups.
+              unlock 3M/6M/1Y/5Y zoom levels for deeper analysis.
             </div>
           )}
         </div>
       )}
 
       {/* Content Area */}
-      <div className="h-[450px] bg-background/50 relative">
+      <div className="flex-1 bg-background/50 relative overflow-hidden">
         {/* Chart View */}
         {selectedView === "chart" && (
           <>
             {chartLoading ? (
-              <div className="h-[450px] flex items-center justify-center text-sm text-muted-foreground">
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                 Loading chart…
               </div>
             ) : data.length === 0 ? (
-              <div className="h-[450px] flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
                 {chartError
                   ? `Chart unavailable: ${chartError}`
                   : "No chart data available."}
@@ -325,11 +392,52 @@ export function ChartPanel({
               <TradingChart
                 data={data}
                 type="candlestick"
-                height={450}
+                height={600}
                 showVolume={showVolume}
                 showGrid={true}
                 overlays={overlays}
                 priceLines={showLevels ? priceLines : []}
+                strategyZones={strategyZones}
+                visibleRange={(() => {
+                  if (!data || data.length === 0) return undefined;
+
+                  const now = data[data.length - 1]?.time;
+                  if (!now) return undefined;
+
+                  const nowTimestamp =
+                    typeof now === "string"
+                      ? new Date(now).getTime() / 1000
+                      : now;
+
+                  // Calculate how far back to show based on timeframe
+                  let daysBack: number;
+                  switch (timeframe) {
+                    case "1M":
+                      daysBack = 30;
+                      break;
+                    case "3M":
+                      daysBack = 90;
+                      break;
+                    case "6M":
+                      daysBack = 180;
+                      break;
+                    case "1Y":
+                      daysBack = 365;
+                      break;
+                    case "5Y":
+                      daysBack = 5 * 365;
+                      break;
+                    default:
+                      return undefined; // Let chart auto-fit
+                  }
+
+                  const fromTimestamp = nowTimestamp - daysBack * 24 * 60 * 60;
+
+                  return {
+                    from: fromTimestamp as any,
+                    to: nowTimestamp as any,
+                  };
+                })()}
               />
             )}
           </>

@@ -58,8 +58,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         volume: quote.volume || 0,
         previousClose: quote.previousClose || quote.price || 0,
         marketCap: quote.marketCap,
-        pe: quote.pe,
-        eps: quote.eps,
+        pe: (quote as any).pe,
+        eps: (quote as any).eps,
       },
       profile: {
         name: (profile as any)?.companyName || symbol,
@@ -94,9 +94,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
       catalysts: await fetchCatalysts(symbol, earnings),
       news: news.slice(0, 10).map((article) => ({
         title: article.title,
-        publishedDate: article.publishedDate,
-        url: article.url,
-        source: article.site,
+        publishedDate:
+          article.publishedDate || article.date || new Date().toISOString(),
+        url: article.url || article.link || "",
+        source: article.site || article.source,
         sentiment: article.sentiment,
       })),
       financials: await fetchFinancials(symbol),
