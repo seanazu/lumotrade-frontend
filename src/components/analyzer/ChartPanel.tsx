@@ -9,8 +9,17 @@ import type { ChartAnalysisData } from "@/hooks/useChartAnalysis";
 import type { TradingStrategy } from "@/types/strategies";
 import type { StrategyZone } from "@/components/design-system/charts/TradingChart";
 
+interface ChartData {
+  time: string | number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 interface ChartPanelProps {
-  data: any[];
+  data: ChartData[];
   symbol?: string;
   timeframe?: string;
   onTimeframeChange?: (timeframe: string) => void;
