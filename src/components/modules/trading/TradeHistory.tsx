@@ -36,10 +36,49 @@ export function TradeHistory() {
 
   const fetchTradeHistory = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/legendary/trades/history');
+      const ML_BACKEND_URL = process.env.NEXT_PUBLIC_ML_BACKEND_URL || 'https://lumotrade-api-995037988776.us-central1.run.app';
+      const ML_API_KEY = process.env.NEXT_PUBLIC_ML_API_KEY || '';
+      
+      const response = await fetch(`${ML_BACKEND_URL}/api/trades?days=30&page_size=200`, {
+        headers: {
+          'X-API-Key': ML_API_KEY
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
       const data = await response.json();
-      setTrades(data.trades || []);
-      setStats(data.stats || stats);
+      
+      // Map API response to component format
+      const mappedTrades = (data.trades || []).map((trade: any) => ({
+        id: trade.trade_id?.toString() || trade.id,
+        date: trade.entry_date,
+        ticker: trade.ticker,
+        direction: trade.direction,
+        confidence: trade.confidence || 0,
+        entry_price: trade.entry_price || 0,
+        exit_price: trade.exit_price || trade.entry_price || 0,
+        position_size: trade.position_pct || 0,
+        pnl: trade.pnl || 0,
+        pnl_percent: trade.pnl_pct || 0,
+        was_correct: trade.pnl > 0
+      }));
+      
+      setTrades(mappedTrades);
+      
+      // Use stats from API if available
+      if (data.stats) {
+        setStats({
+          total_trades: data.stats.total_trades || 0,
+          win_rate: data.stats.win_rate || 0,
+          total_pnl: data.stats.total_pnl || 0,
+          avg_win: data.stats.avg_win || 0,
+          avg_loss: data.stats.avg_loss || 0
+        });
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching trade history:', error);

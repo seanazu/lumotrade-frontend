@@ -55,7 +55,7 @@ const TopBar: React.FC<TopBarProps> = ({
         {/* Subtle glow line */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
-        <div className="h-full flex items-center justify-between px-4 max-w-screen-2xl mx-auto">
+        <div className="h-full flex items-center justify-between px-4">
           {/* Left section - Logo and Nav */}
           <div className="flex items-center gap-6">
             {/* Mobile menu button */}

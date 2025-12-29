@@ -2,102 +2,31 @@
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { queryClient } from "@/lib/tanstack-query/queryClient";
-import {
-  AppShell,
-  AIChatSidebar,
-  AIBriefCard,
-  PredictionsSection,
-  AssetCardsSection,
-  ChartsSection,
-  NewsSection,
-  CalendarSection,
-  ResearchSection,
-} from "@/components/design-system/organisms";
-import {
-  MarketStatusBar,
-  PageHeader,
-} from "@/components/design-system/molecules";
-import { useTodayPrediction } from "@/hooks/useMLBackend";
-import { useMarketStatus } from "@/hooks/useMarketStatus";
+import { AppShell } from "@/components/design-system/organisms";
 
-interface MarketOverviewPageProps {
-  isAIBriefOpen: boolean;
-  setIsAIBriefOpen: (open: boolean) => void;
-}
-
-function MarketOverviewPage({
-  isAIBriefOpen,
-  setIsAIBriefOpen,
-}: MarketOverviewPageProps) {
-  const { data: predictions, isLoading: predictionsLoading } =
-    useTodayPrediction();
-  const { data: marketStatus } = useMarketStatus();
-
-  return (
-    <>
-      <div className="min-h-screen bg-background relative">
-        <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 relative z-10">
-          {/* Page Header */}
-          <PageHeader
-            title="Market Overview"
-            subtitle={marketStatus?.subtitle || "Loading market data..."}
-            isLive={marketStatus?.isOpen}
-          />
-
-          {/* Market Status Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <MarketStatusBar />
-          </motion.div>
-
-          {/* Asset Cards */}
-          <AssetCardsSection />
-
-          {/* AI Model Predictions */}
-          <PredictionsSection
-            predictions={predictions || []}
-            isLoading={predictionsLoading}
-          />
-
-          {/* Charts and AI Brief */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6 pb-2"
-          >
-            <ChartsSection />
-            <AIBriefCard onChatClick={() => setIsAIBriefOpen(true)} />
-          </motion.div>
-
-          {/* Bottom Sections: News, Calendar, Research */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 pb-8"
-          >
-            <NewsSection />
-            <CalendarSection />
-            <ResearchSection />
-          </motion.div>
+// Dynamic import for heavy market overview container
+const MarketOverviewContainer = dynamic(
+  () =>
+    import("@/features/market-overview").then((mod) => ({
+      default: mod.MarketOverviewContainer,
+    })),
+  {
+    loading: () => (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-sm text-muted-foreground">
+          Loading market data...
         </div>
       </div>
+    ),
+  }
+);
 
-      {/* AI Chat Sidebar */}
-      <AIChatSidebar
-        isOpen={isAIBriefOpen}
-        onClose={() => setIsAIBriefOpen(false)}
-      />
-    </>
-  );
-}
-
+/**
+ * Home Page
+ * Main entry point for the market overview dashboard
+ */
 export default function Home() {
   const [isAIBriefOpen, setIsAIBriefOpen] = useState(false);
 
@@ -108,10 +37,7 @@ export default function Home() {
         userEmail="user@example.com"
         onChatClick={() => setIsAIBriefOpen(true)}
       >
-        <MarketOverviewPage
-          isAIBriefOpen={isAIBriefOpen}
-          setIsAIBriefOpen={setIsAIBriefOpen}
-        />
+        <MarketOverviewContainer />
       </AppShell>
     </QueryClientProvider>
   );

@@ -30,10 +30,36 @@ export function TodaysTrades() {
 
   const fetchTodaysTrades = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/legendary/trades/today');
+      const ML_BACKEND_URL = process.env.NEXT_PUBLIC_ML_BACKEND_URL || 'https://lumotrade-api-995037988776.us-central1.run.app';
+      const ML_API_KEY = process.env.NEXT_PUBLIC_ML_API_KEY || '';
+      
+      // Get today's date in ET timezone
+      const today = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+      const todayISO = new Date(today).toISOString().split('T')[0];
+      
+      const response = await fetch(`${ML_BACKEND_URL}/api/trades?days=1&page_size=100`, {
+        headers: {
+          'X-API-Key': ML_API_KEY
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
       const data = await response.json();
-      setTrades(data.trades || []);
-      setTotalPnL(data.total_pnl || 0);
+      const todaysTrades = (data.trades || []).filter((trade: any) => 
+        trade.entry_date === todayISO || trade.entry_time?.startsWith(todayISO)
+      );
+      
+      setTrades(todaysTrades);
+      
+      // Calculate total P&L from today's trades
+      const totalPnL = todaysTrades.reduce((sum: number, trade: any) => {
+        return sum + (trade.pnl_pct || 0);
+      }, 0);
+      setTotalPnL(totalPnL);
+      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching trades:', error);
