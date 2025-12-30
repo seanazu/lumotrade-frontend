@@ -86,15 +86,6 @@ export function validateEnv() {
     INSTANT_APP_ID, // Required for client-side auth
   };
 
-  // Runtime-only checks (only validate when actually needed)
-  const runtimeRequired = {
-    POLYGON_API_KEY,
-    MARKETAUX_API_KEY,
-    FMP_API_KEY,
-    OPENAI_API_KEY,
-    CRON_SECRET,
-  };
-
   const missing = Object.entries(required)
     .filter(([, value]) => !value)
     .map(([key]) => key);
@@ -108,22 +99,35 @@ export function validateEnv() {
     );
   }
 
-  // Warn about runtime variables (don't throw, they'll be checked when API routes run)
-  const missingRuntime = Object.entries(runtimeRequired)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
+  // In production, don't log warnings about runtime variables
+  // They're validated when actually used by API routes
+  if (!IS_PRODUCTION) {
+    // Runtime-only checks (only validate when actually needed)
+    const runtimeRequired = {
+      POLYGON_API_KEY,
+      MARKETAUX_API_KEY,
+      FMP_API_KEY,
+      OPENAI_API_KEY,
+      CRON_SECRET,
+    };
 
-  if (missingRuntime.length > 0 && IS_PRODUCTION) {
-    console.warn(
-      `⚠️ Runtime API keys not set (will be validated when API routes are called): ${missingRuntime.join(", ")}`
-    );
-  }
+    // Warn about runtime variables (don't throw, they'll be checked when API routes run)
+    const missingRuntime = Object.entries(runtimeRequired)
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
 
-  // Optional variables (log warning if missing)
-  if (!ANTHROPIC_API_KEY && IS_PRODUCTION) {
-    console.warn(
-      "⚠️ ANTHROPIC_API_KEY not set - Claude AI features will be unavailable"
-    );
+    if (missingRuntime.length > 0) {
+      console.warn(
+        `⚠️ Runtime API keys not set (will be validated when API routes are called): ${missingRuntime.join(", ")}`
+      );
+    }
+
+    // Optional variables (log warning if missing)
+    if (!ANTHROPIC_API_KEY) {
+      console.warn(
+        "⚠️ ANTHROPIC_API_KEY not set - Claude AI features will be unavailable"
+      );
+    }
   }
 }
 

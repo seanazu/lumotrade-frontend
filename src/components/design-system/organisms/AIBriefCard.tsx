@@ -24,7 +24,7 @@ interface AIBriefCardProps {
  * - Market regime and sentiment context
  */
 export function AIBriefCard({ onChatClick }: AIBriefCardProps) {
-  const { data, isLoading } = useTradingOpportunities();
+  const { data, isLoading, error, isError } = useTradingOpportunities();
   const [positionRisk, setPositionRisk] = useState(500);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -37,6 +37,9 @@ export function AIBriefCard({ onChatClick }: AIBriefCardProps) {
       router.push(`/analyzer?symbol=${symbol}`);
     });
   };
+
+  // Debug logging
+  console.log("AIBriefCard state:", { isLoading, isError, error, hasData: !!data, opportunitiesCount: opportunities.length });
 
   return (
     <div
@@ -87,7 +90,15 @@ export function AIBriefCard({ onChatClick }: AIBriefCardProps) {
               </div>
             )}
 
-            {!isLoading && opportunities.length === 0 && (
+            {isError && (
+              <div className="text-center py-8">
+                <p className="text-sm text-red-400">
+                  Error loading opportunities: {error instanceof Error ? error.message : 'Unknown error'}
+                </p>
+              </div>
+            )}
+
+            {!isLoading && !isError && opportunities.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-sm text-muted-foreground">
                   {data?.message ||
@@ -96,7 +107,7 @@ export function AIBriefCard({ onChatClick }: AIBriefCardProps) {
               </div>
             )}
 
-            {!isLoading &&
+            {!isLoading && !isError &&
               opportunities.map((opportunity, idx) => (
                 <OpportunityCard
                   key={idx}
