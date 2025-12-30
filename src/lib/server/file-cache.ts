@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-const CACHE_DIR = path.join(process.cwd(), '.cache');
+// Use /tmp directory in serverless environments (Vercel)
+// This is the only writable directory in Vercel's serverless functions
+const CACHE_DIR = process.env.VERCEL ? '/tmp/.cache' : path.join(process.cwd(), '.cache');
 
 // Ensure cache directory exists
 if (!fs.existsSync(CACHE_DIR)) {
