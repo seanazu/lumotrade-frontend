@@ -1,7 +1,7 @@
 /**
  * Environment Variables Configuration
  * Centralized access to environment variables with validation
- * 
+ *
  * SECURITY NOTES:
  * - All variables WITHOUT NEXT_PUBLIC_ prefix are SERVER-ONLY (never exposed to browser)
  * - Variables WITH NEXT_PUBLIC_ prefix are exposed to browser (use sparingly!)
@@ -66,15 +66,28 @@ export const ML_API_TIMEOUT = parseInt(
 /**
  * Validates that required environment variables are set
  * @throws Error if required variables are missing
+ * 
+ * NOTE: Only validates at runtime, not during build process
+ * API keys are only needed when API routes are called, not during build
  */
 export function validateEnv() {
+  // Skip validation during build process
+  if (process.env.VERCEL_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+    console.log('⏭️  Skipping env validation during build (runtime validation will occur)');
+    return;
+  }
+
   const required = {
+    INSTANT_APP_ID, // Required for client-side auth
+  };
+
+  // Runtime-only checks (only validate when actually needed)
+  const runtimeRequired = {
     POLYGON_API_KEY,
     MARKETAUX_API_KEY,
     FMP_API_KEY,
     OPENAI_API_KEY,
-    INSTANT_APP_ID,
-    CRON_SECRET, // Required in production
+    CRON_SECRET,
   };
 
   const missing = Object.entries(required)
@@ -90,6 +103,17 @@ export function validateEnv() {
     );
   }
 
+  // Warn about runtime variables (don't throw, they'll be checked when API routes run)
+  const missingRuntime = Object.entries(runtimeRequired)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingRuntime.length > 0 && IS_PRODUCTION) {
+    console.warn(
+      `⚠️ Runtime API keys not set (will be validated when API routes are called): ${missingRuntime.join(", ")}`
+    );
+  }
+
   // Optional variables (log warning if missing)
   if (!ANTHROPIC_API_KEY && IS_PRODUCTION) {
     console.warn(
@@ -98,7 +122,8 @@ export function validateEnv() {
   }
 }
 
-// Validate on module load in production
+// Only validate critical build-time variables
+// Runtime variables will be validated when API routes are called
 if (IS_PRODUCTION) {
   validateEnv();
 }
