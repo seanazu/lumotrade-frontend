@@ -125,188 +125,200 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            style={{ zIndex: 9998 }}
           />
 
-          {/* Sidebar - Exact Figma Design */}
+          {/* Sidebar - Exact Figma Design - Fixed to right side, full height */}
           <motion.aside
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-[384px] z-50 flex flex-col shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)]"
+            className="fixed top-0 right-0 w-[384px] h-screen flex flex-col"
             style={{
               background: "rgba(11, 11, 12, 0.9)",
               borderLeft: "1px solid #27272a",
+              boxShadow: "0px 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              zIndex: 9999,
             }}
           >
             {/* Header - 89px height */}
             <div
-              className="relative h-[89px] flex items-center px-6"
+              className="flex-shrink-0 h-[89px] flex items-center"
               style={{
                 borderBottom: "1px solid #27272a",
+                paddingLeft: "24px",
+                paddingRight: "24px",
               }}
             >
               {/* AI Icon with gradient and shadow */}
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center"
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{
                   background:
                     "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
                   boxShadow: "0px 0px 20px -5px rgba(99, 102, 241, 0.4)",
                 }}
               >
-                <Sparkles className="w-[18px] h-[22px] text-white -scale-y-100" />
+                <Sparkles className="w-[18px] h-[22px] text-white" style={{ transform: "scaleY(-1)" }} />
               </div>
 
               {/* Title */}
               <h3
-                className="ml-3 font-bold text-[18px] leading-[28px]"
-                style={{ color: "#f4f4f5" }}
+                className="ml-3 font-bold text-[18px] leading-[28px] flex-shrink-0"
+                style={{ color: "#f4f4f5", fontFamily: "Manrope, sans-serif" }}
               >
                 Lumo AI
               </h3>
 
+              {/* Spacer */}
+              <div className="flex-1" />
+
               {/* Close Button */}
               <button
                 onClick={onClose}
-                className="absolute right-6 w-10 h-10 rounded-full hover:bg-[#27272a] flex items-center justify-center transition-colors"
+                className="w-10 h-10 rounded-full hover:bg-[#27272a] flex items-center justify-center transition-colors flex-shrink-0"
                 style={{ color: "#a1a1aa" }}
+                aria-label="Close AI Chat"
               >
-                <X className="w-7 h-7 -scale-y-100" />
+                <X className="w-6 h-6" style={{ transform: "scaleY(-1)" }} />
               </button>
             </div>
 
-            {/* Messages Container - Scrollable */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={message.role === "user" ? "flex justify-end" : ""}
-                >
-                  {message.role === "assistant" && (
-                    <div className="flex items-start gap-3">
-                      {/* AI Avatar */}
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{
-                          background:
-                            "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
-                        }}
-                      >
-                        <span
-                          className="text-[10px] font-normal"
-                          style={{ color: "#ffffff" }}
-                        >
-                          AI
-                        </span>
-                      </div>
-
-                      {/* AI Message Bubble */}
-                      <div
-                        className="rounded-br-2xl rounded-tr-2xl rounded-bl-2xl px-4 py-3 flex-1 max-w-[267px]"
-                        style={{
-                          background: "#1e2026",
-                        }}
-                      >
-                        <p
-                          className="text-[14px] leading-[22.75px] whitespace-pre-wrap"
-                          style={{ color: "#d4d4d8" }}
-                        >
-                          {message.content}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {message.role === "user" && (
-                    <div className="flex items-start gap-3">
-                      {/* User Message Bubble */}
-                      <div
-                        className="rounded-bl-2xl rounded-tl-2xl rounded-br-2xl px-4 py-3 max-w-[249px]"
-                        style={{
-                          background: "rgba(99, 102, 241, 0.1)",
-                          border: "1px solid rgba(99, 102, 241, 0.2)",
-                        }}
-                      >
-                        <p
-                          className="text-[14px] leading-[20px] font-medium"
-                          style={{ color: "#6366f1" }}
-                        >
-                          {message.content}
-                        </p>
-                      </div>
-
-                      {/* User Avatar */}
-                      <div
-                        className="w-8 h-8 rounded-full flex-shrink-0"
-                        style={{ background: "#3f3f46" }}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Loading Indicator - Three Dots */}
-              {isLoading && (
-                <div className="flex items-start gap-3">
-                  {/* AI Avatar */}
+            {/* Messages Container - Scrollable - Fills remaining space */}
+            <div className="flex-1 overflow-y-auto" style={{ paddingLeft: "24px", paddingRight: "24px", paddingTop: "24px", paddingBottom: "24px" }}>
+              <div className="space-y-6">
+                {messages.map((message) => (
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background:
-                        "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
-                    }}
+                    key={message.id}
+                    className={message.role === "user" ? "flex justify-end" : ""}
                   >
-                    <span
-                      className="text-[10px] font-normal"
-                      style={{ color: "#ffffff" }}
+                    {message.role === "assistant" && (
+                      <div className="flex items-start gap-3">
+                        {/* AI Avatar */}
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{
+                            background:
+                              "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
+                          }}
+                        >
+                          <span
+                            className="text-[10px] font-normal"
+                            style={{ color: "#ffffff", fontFamily: "Manrope, sans-serif" }}
+                          >
+                            AI
+                          </span>
+                        </div>
+
+                        {/* AI Message Bubble */}
+                        <div
+                          className="rounded-br-2xl rounded-tr-2xl rounded-bl-2xl px-4 py-3 flex-1 max-w-[267px]"
+                          style={{
+                            background: "#1e2026",
+                          }}
+                        >
+                          <p
+                            className="text-[14px] leading-[22.75px] whitespace-pre-wrap font-normal"
+                            style={{ color: "#d4d4d8", fontFamily: "Manrope, sans-serif" }}
+                          >
+                            {message.content}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {message.role === "user" && (
+                      <div className="flex items-start gap-3 justify-end">
+                        {/* User Message Bubble */}
+                        <div
+                          className="rounded-bl-2xl rounded-tl-2xl rounded-br-2xl px-4 py-3 max-w-[249px]"
+                          style={{
+                            background: "rgba(99, 102, 241, 0.1)",
+                          }}
+                        >
+                          <p
+                            className="text-[14px] leading-[20px] font-medium"
+                            style={{ color: "#6366f1", fontFamily: "Manrope, sans-serif" }}
+                          >
+                            {message.content}
+                          </p>
+                        </div>
+
+                        {/* User Avatar */}
+                        <div
+                          className="w-8 h-8 rounded-full flex-shrink-0"
+                          style={{ background: "#3f3f46" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Loading Indicator - Three Dots */}
+                {isLoading && (
+                  <div className="flex items-start gap-3">
+                    {/* AI Avatar */}
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background:
+                          "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
+                      }}
                     >
-                      AI
-                    </span>
-                  </div>
+                      <span
+                        className="text-[10px] font-normal"
+                        style={{ color: "#ffffff", fontFamily: "Manrope, sans-serif" }}
+                      >
+                        AI
+                      </span>
+                    </div>
 
-                  {/* Loading Bubble */}
-                  <div
-                    className="rounded-br-2xl rounded-tr-2xl rounded-bl-2xl p-4 w-[58px]"
-                    style={{ background: "#1e2026" }}
-                  >
-                    <div className="flex gap-1.5 items-center justify-center">
-                      <div
-                        className="w-1.5 h-1.5 rounded-full animate-bounce"
-                        style={{ background: "#94a3b8" }}
-                      />
-                      <div
-                        className="w-1.5 h-1.5 rounded-full animate-bounce"
-                        style={{
-                          background: "#94a3b8",
-                          animationDelay: "0.2s",
-                        }}
-                      />
-                      <div
-                        className="w-1.5 h-1.5 rounded-full animate-bounce"
-                        style={{
-                          background: "#94a3b8",
-                          animationDelay: "0.4s",
-                        }}
-                      />
+                    {/* Loading Bubble */}
+                    <div
+                      className="rounded-br-2xl rounded-tr-2xl rounded-bl-2xl p-4 w-[58px] h-[38px] flex items-center justify-center"
+                      style={{ background: "#1e2026" }}
+                    >
+                      <div className="flex gap-1.5">
+                        <div
+                          className="w-1.5 h-1.5 rounded-full animate-bounce"
+                          style={{ background: "#94a3b8" }}
+                        />
+                        <div
+                          className="w-1.5 h-1.5 rounded-full animate-bounce"
+                          style={{
+                            background: "#94a3b8",
+                            animationDelay: "0.2s",
+                          }}
+                        />
+                        <div
+                          className="w-1.5 h-1.5 rounded-full animate-bounce"
+                          style={{
+                            background: "#94a3b8",
+                            animationDelay: "0.4s",
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} />
+              </div>
             </div>
 
-            {/* Input Area - 79px height */}
+            {/* Input Area - 79px height - Fixed to bottom */}
             <div
-              className="h-[79px] px-6 py-4"
+              className="flex-shrink-0 h-[79px] flex items-center"
               style={{
                 borderTop: "1px solid #27272a",
+                paddingLeft: "24px",
+                paddingRight: "24px",
               }}
             >
               <div
-                className="h-[46px] rounded-xl flex items-center px-4 gap-2"
+                className="w-full h-[46px] rounded-xl flex items-center px-4 gap-2"
                 style={{
                   background: "#1e2026",
                   border: "1px solid #27272a",
@@ -316,23 +328,25 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
                   placeholder="Ask Lumo anything..."
                   disabled={isLoading}
-                  className="flex-1 bg-transparent text-[14px] outline-none disabled:opacity-50"
+                  className="flex-1 bg-transparent text-[14px] outline-none disabled:opacity-50 placeholder:text-[#6b7280]"
                   style={{
                     color: "#ffffff",
                     caretColor: "#6366f1",
+                    fontFamily: "Manrope, sans-serif",
                   }}
                 />
                 <button
                   onClick={handleSend}
                   disabled={isLoading || !input.trim()}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-opacity hover:bg-[#27272a]"
+                  aria-label="Send message"
                 >
                   <Send
-                    className="w-5 h-6 -scale-y-100"
-                    style={{ color: "#a1a1aa" }}
+                    className="w-5 h-6"
+                    style={{ color: "#a1a1aa", transform: "scaleY(-1)" }}
                   />
                 </button>
               </div>
