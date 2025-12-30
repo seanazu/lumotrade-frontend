@@ -18,7 +18,9 @@ import { useTodayPrediction, usePredictionHistory, type Prediction } from "@/hoo
 // ============ Today's Prediction Card ============
 
 function TodayPredictionCard() {
-  const { data: prediction, isLoading, error, refetch } = useTodayPrediction();
+  const { data: predictions, isLoading, error, refetch } = useTodayPrediction();
+
+  console.log('[PredictionsPage] Today predictions:', { predictions, isLoading, error });
 
   if (isLoading) {
     return (
@@ -35,13 +37,13 @@ function TodayPredictionCard() {
     );
   }
 
-  if (error || !prediction) {
+  if (error) {
     return (
       <div className="bg-card border border-destructive/30 rounded-xl p-8">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <AlertCircle className="w-12 h-12 text-destructive" />
-          <p className="text-destructive text-center">
-            {error instanceof Error ? error.message : "Failed to load prediction"}
+          <p className="text-destructive text-center font-semibold">
+            {error instanceof Error ? error.message : "Failed to load predictions"}
           </p>
           <button
             onClick={() => refetch()}
@@ -54,87 +56,102 @@ function TodayPredictionCard() {
     );
   }
 
-  const isUp = prediction.direction === "UP";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border rounded-xl overflow-hidden"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-sm font-medium text-foreground">Today's Prediction</span>
-        </div>
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Clock className="w-4 h-4" />
-          {prediction.date}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="p-6">
-        <div className="flex items-center gap-8">
-          {/* Direction Indicator */}
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className={`w-24 h-24 rounded-2xl flex items-center justify-center ${
-              isUp ? "bg-up/10" : "bg-down/10"
-            }`}
+  // Handle empty predictions array
+  if (!predictions || predictions.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-8">
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <AlertCircle className="w-12 h-12 text-muted-foreground" />
+          <p className="text-muted-foreground text-center">
+            No predictions available for today yet. Predictions are generated daily at 9:29 AM ET.
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg text-foreground transition-colors"
           >
-            {isUp ? (
-              <TrendingUp className="w-12 h-12 text-up" />
-            ) : (
-              <TrendingDown className="w-12 h-12 text-down" />
-            )}
-          </motion.div>
-
-          {/* Details */}
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h2 className={`text-3xl font-bold ${isUp ? "text-up" : "text-down"}`}>
-                {prediction.direction}
-              </h2>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  prediction.signal_strength === "STRONG"
-                    ? "bg-up/10 text-up"
-                    : prediction.signal_strength === "MODERATE"
-                    ? "bg-warning/10 text-warning"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {prediction.signal_strength}
-              </span>
-            </div>
-            <p className="text-muted-foreground text-sm">{prediction.trade_signal}</p>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <Gauge className="w-5 h-5 mx-auto mb-1 text-primary" />
-              <p className="text-xs text-muted-foreground">Confidence</p>
-              <p className="text-lg font-bold text-foreground">
-                {(prediction.confidence * 100).toFixed(0)}%
-              </p>
-            </div>
-            <div className="text-center">
-              <Target className="w-5 h-5 mx-auto mb-1 text-primary" />
-              <p className="text-xs text-muted-foreground">Position</p>
-              <p className="text-lg font-bold text-foreground">
-                {(prediction.position_size * 100).toFixed(0)}%
-              </p>
-            </div>
-          </div>
+            Refresh
+          </button>
         </div>
-
       </div>
-    </motion.div>
+    );
+  }
+
+  // Display all predictions in a grid
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {predictions.map((prediction) => {
+          const isUp = prediction.direction === "UP";
+          
+          return (
+            <motion.div
+              key={prediction.ticker}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-colors"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+                <span className="text-lg font-bold text-foreground">{prediction.ticker}</span>
+                <div className={`px-2 py-1 rounded text-xs font-medium ${
+                  isUp ? "bg-up/10 text-up" : "bg-down/10 text-down"
+                }`}>
+                  {prediction.direction}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-4 space-y-3">
+                {/* Direction Icon */}
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  isUp ? "bg-up/10" : "bg-down/10"
+                }`}>
+                  {isUp ? (
+                    <TrendingUp className="w-6 h-6 text-up" />
+                  ) : (
+                    <TrendingDown className="w-6 h-6 text-down" />
+                  )}
+                </div>
+
+                {/* Confidence */}
+                <div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                    <span>Confidence</span>
+                    <span className="font-medium text-foreground">
+                      {((prediction.confidence || 0) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(prediction.confidence || 0) * 100}%` }}
+                      transition={{ duration: 0.5, delay: 0.2 }}
+                      className={`h-full ${isUp ? "bg-up" : "bg-down"}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Magnitude */}
+                {prediction.magnitude !== undefined && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Expected Move</span>
+                    <span className={`font-semibold ${isUp ? "text-up" : "text-down"}`}>
+                      {isUp ? '+' : ''}{(prediction.magnitude * 100).toFixed(2)}%
+                    </span>
+                  </div>
+                )}
+
+                {/* Date */}
+                <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t border-border">
+                  <Clock className="w-3 h-3" />
+                  {prediction.date}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

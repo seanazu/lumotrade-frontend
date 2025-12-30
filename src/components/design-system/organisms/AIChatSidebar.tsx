@@ -41,14 +41,16 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
 
   // Theme-aware colors
   const colors = {
-    background: theme === "dark" ? "rgba(11, 11, 12, 0.9)" : "rgba(255, 255, 255, 0.95)",
+    background:
+      theme === "dark" ? "rgba(11, 11, 12, 0.9)" : "rgba(255, 255, 255, 0.95)",
     border: theme === "dark" ? "#27272a" : "#e5e7eb",
     headerText: theme === "dark" ? "#f4f4f5" : "#18181b",
     closeHover: theme === "dark" ? "#27272a" : "#f4f4f5",
     closeIcon: theme === "dark" ? "#a1a1aa" : "#71717a",
     messageBubbleBg: theme === "dark" ? "#1e2026" : "#f4f4f5",
     messageText: theme === "dark" ? "#d4d4d8" : "#3f3f46",
-    userBubbleBg: theme === "dark" ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.15)",
+    userBubbleBg:
+      theme === "dark" ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.15)",
     userText: theme === "dark" ? "#6366f1" : "#4f46e5",
     userAvatar: theme === "dark" ? "#3f3f46" : "#d4d4d8",
     inputBg: theme === "dark" ? "#1e2026" : "#f9fafb",
@@ -152,9 +154,10 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
             height: "calc(100vh - 48px)", // Full height minus TopBar (48px / h-12)
             background: colors.background,
             borderLeft: `1px solid ${colors.border}`,
-            boxShadow: theme === "dark" 
-              ? "0px 25px 50px -12px rgba(0, 0, 0, 0.25)" 
-              : "0px 25px 50px -12px rgba(0, 0, 0, 0.1)",
+            boxShadow:
+              theme === "dark"
+                ? "0px 25px 50px -12px rgba(0, 0, 0, 0.25)"
+                : "0px 25px 50px -12px rgba(0, 0, 0, 0.1)",
             zIndex: 40,
           }}
         >
@@ -185,7 +188,10 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
             {/* Title */}
             <h3
               className="ml-3 font-bold text-[18px] leading-[28px] flex-shrink-0"
-              style={{ color: colors.headerText, fontFamily: "Manrope, sans-serif" }}
+              style={{
+                color: colors.headerText,
+                fontFamily: "Manrope, sans-serif",
+              }}
             >
               Lumo AI
             </h3>
@@ -198,8 +204,12 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
               onClick={onClose}
               className="w-10 h-10 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
               style={{ color: colors.closeIcon }}
-              onMouseEnter={(e) => e.currentTarget.style.background = colors.closeHover}
-              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = colors.closeHover)
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "transparent")
+              }
               aria-label="Close AI Chat"
             >
               <X className="w-6 h-6" style={{ transform: "scaleY(-1)" }} />
@@ -388,14 +398,17 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
                 disabled={isLoading || !input.trim()}
                 className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 style={{ color: colors.sendIcon }}
-                onMouseEnter={(e) => !isLoading && input.trim() && (e.currentTarget.style.background = colors.sendHover)}
-                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                onMouseEnter={(e) =>
+                  !isLoading &&
+                  input.trim() &&
+                  (e.currentTarget.style.background = colors.sendHover)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
                 aria-label="Send message"
               >
-                <Send
-                  className="w-5 h-6"
-                  style={{ transform: "scaleY(-1)" }}
-                />
+                <Send className="w-5 h-6" style={{ transform: "scaleY(-1)" }} />
               </button>
             </div>
           </div>
