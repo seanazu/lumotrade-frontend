@@ -181,194 +181,192 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
             </button>
           </div>
 
-            {/* Messages Container - Scrollable - Fills remaining space */}
-            <div
-              className="flex-1 overflow-y-auto"
-              style={{
-                paddingLeft: "24px",
-                paddingRight: "24px",
-                paddingTop: "24px",
-                paddingBottom: "24px",
-              }}
-            >
-              <div className="space-y-6">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={
-                      message.role === "user" ? "flex justify-end" : ""
-                    }
-                  >
-                    {message.role === "assistant" && (
-                      <div className="flex items-start gap-3">
-                        {/* AI Avatar */}
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background:
-                              "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
-                          }}
-                        >
-                          <span
-                            className="text-[10px] font-normal"
-                            style={{
-                              color: "#ffffff",
-                              fontFamily: "Manrope, sans-serif",
-                            }}
-                          >
-                            AI
-                          </span>
-                        </div>
-
-                        {/* AI Message Bubble */}
-                        <div
-                          className="rounded-br-2xl rounded-tr-2xl rounded-bl-2xl px-4 py-3 flex-1 max-w-[267px]"
-                          style={{
-                            background: "#1e2026",
-                          }}
-                        >
-                          <p
-                            className="text-[14px] leading-[22.75px] whitespace-pre-wrap font-normal"
-                            style={{
-                              color: "#d4d4d8",
-                              fontFamily: "Manrope, sans-serif",
-                            }}
-                          >
-                            {message.content}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {message.role === "user" && (
-                      <div className="flex items-start gap-3 justify-end">
-                        {/* User Message Bubble */}
-                        <div
-                          className="rounded-bl-2xl rounded-tl-2xl rounded-br-2xl px-4 py-3 max-w-[249px]"
-                          style={{
-                            background: "rgba(99, 102, 241, 0.1)",
-                          }}
-                        >
-                          <p
-                            className="text-[14px] leading-[20px] font-medium"
-                            style={{
-                              color: "#6366f1",
-                              fontFamily: "Manrope, sans-serif",
-                            }}
-                          >
-                            {message.content}
-                          </p>
-                        </div>
-
-                        {/* User Avatar */}
-                        <div
-                          className="w-8 h-8 rounded-full flex-shrink-0"
-                          style={{ background: "#3f3f46" }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Loading Indicator - Three Dots */}
-                {isLoading && (
-                  <div className="flex items-start gap-3">
-                    {/* AI Avatar */}
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{
-                        background:
-                          "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
-                      }}
-                    >
-                      <span
-                        className="text-[10px] font-normal"
+          {/* Messages Container - Scrollable - Fills remaining space */}
+          <div
+            className="flex-1 overflow-y-auto"
+            style={{
+              paddingLeft: "24px",
+              paddingRight: "24px",
+              paddingTop: "24px",
+              paddingBottom: "24px",
+            }}
+          >
+            <div className="space-y-6">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={message.role === "user" ? "flex justify-end" : ""}
+                >
+                  {message.role === "assistant" && (
+                    <div className="flex items-start gap-3">
+                      {/* AI Avatar */}
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{
-                          color: "#ffffff",
-                          fontFamily: "Manrope, sans-serif",
+                          background:
+                            "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
                         }}
                       >
-                        AI
-                      </span>
-                    </div>
+                        <span
+                          className="text-[10px] font-normal"
+                          style={{
+                            color: "#ffffff",
+                            fontFamily: "Manrope, sans-serif",
+                          }}
+                        >
+                          AI
+                        </span>
+                      </div>
 
-                    {/* Loading Bubble */}
-                    <div
-                      className="rounded-br-2xl rounded-tr-2xl rounded-bl-2xl p-4 w-[58px] h-[38px] flex items-center justify-center"
-                      style={{ background: "#1e2026" }}
-                    >
-                      <div className="flex gap-1.5">
-                        <div
-                          className="w-1.5 h-1.5 rounded-full animate-bounce"
-                          style={{ background: "#94a3b8" }}
-                        />
-                        <div
-                          className="w-1.5 h-1.5 rounded-full animate-bounce"
+                      {/* AI Message Bubble */}
+                      <div
+                        className="rounded-br-2xl rounded-tr-2xl rounded-bl-2xl px-4 py-3 flex-1 max-w-[267px]"
+                        style={{
+                          background: "#1e2026",
+                        }}
+                      >
+                        <p
+                          className="text-[14px] leading-[22.75px] whitespace-pre-wrap font-normal"
                           style={{
-                            background: "#94a3b8",
-                            animationDelay: "0.2s",
+                            color: "#d4d4d8",
+                            fontFamily: "Manrope, sans-serif",
                           }}
-                        />
-                        <div
-                          className="w-1.5 h-1.5 rounded-full animate-bounce"
-                          style={{
-                            background: "#94a3b8",
-                            animationDelay: "0.4s",
-                          }}
-                        />
+                        >
+                          {message.content}
+                        </p>
                       </div>
                     </div>
+                  )}
+
+                  {message.role === "user" && (
+                    <div className="flex items-start gap-3 justify-end">
+                      {/* User Message Bubble */}
+                      <div
+                        className="rounded-bl-2xl rounded-tl-2xl rounded-br-2xl px-4 py-3 max-w-[249px]"
+                        style={{
+                          background: "rgba(99, 102, 241, 0.1)",
+                        }}
+                      >
+                        <p
+                          className="text-[14px] leading-[20px] font-medium"
+                          style={{
+                            color: "#6366f1",
+                            fontFamily: "Manrope, sans-serif",
+                          }}
+                        >
+                          {message.content}
+                        </p>
+                      </div>
+
+                      {/* User Avatar */}
+                      <div
+                        className="w-8 h-8 rounded-full flex-shrink-0"
+                        style={{ background: "#3f3f46" }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Loading Indicator - Three Dots */}
+              {isLoading && (
+                <div className="flex items-start gap-3">
+                  {/* AI Avatar */}
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background:
+                        "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
+                    }}
+                  >
+                    <span
+                      className="text-[10px] font-normal"
+                      style={{
+                        color: "#ffffff",
+                        fontFamily: "Manrope, sans-serif",
+                      }}
+                    >
+                      AI
+                    </span>
                   </div>
-                )}
 
-                <div ref={messagesEndRef} />
-              </div>
+                  {/* Loading Bubble */}
+                  <div
+                    className="rounded-br-2xl rounded-tr-2xl rounded-bl-2xl p-4 w-[58px] h-[38px] flex items-center justify-center"
+                    style={{ background: "#1e2026" }}
+                  >
+                    <div className="flex gap-1.5">
+                      <div
+                        className="w-1.5 h-1.5 rounded-full animate-bounce"
+                        style={{ background: "#94a3b8" }}
+                      />
+                      <div
+                        className="w-1.5 h-1.5 rounded-full animate-bounce"
+                        style={{
+                          background: "#94a3b8",
+                          animationDelay: "0.2s",
+                        }}
+                      />
+                      <div
+                        className="w-1.5 h-1.5 rounded-full animate-bounce"
+                        style={{
+                          background: "#94a3b8",
+                          animationDelay: "0.4s",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
             </div>
+          </div>
 
-            {/* Input Area - 79px height - Fixed to bottom */}
+          {/* Input Area - 79px height - Fixed to bottom */}
+          <div
+            className="flex-shrink-0 h-[79px] flex items-center"
+            style={{
+              borderTop: "1px solid #27272a",
+              paddingLeft: "24px",
+              paddingRight: "24px",
+            }}
+          >
             <div
-              className="flex-shrink-0 h-[79px] flex items-center"
+              className="w-full h-[46px] rounded-xl flex items-center px-4 gap-2"
               style={{
-                borderTop: "1px solid #27272a",
-                paddingLeft: "24px",
-                paddingRight: "24px",
+                background: "#1e2026",
+                border: "1px solid #27272a",
               }}
             >
-              <div
-                className="w-full h-[46px] rounded-xl flex items-center px-4 gap-2"
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Ask Lumo anything..."
+                disabled={isLoading}
+                className="flex-1 bg-transparent text-[14px] outline-none disabled:opacity-50 placeholder:text-[#6b7280]"
                 style={{
-                  background: "#1e2026",
-                  border: "1px solid #27272a",
+                  color: "#ffffff",
+                  caretColor: "#6366f1",
+                  fontFamily: "Manrope, sans-serif",
                 }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={isLoading || !input.trim()}
+                className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-opacity hover:bg-[#27272a]"
+                aria-label="Send message"
               >
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  placeholder="Ask Lumo anything..."
-                  disabled={isLoading}
-                  className="flex-1 bg-transparent text-[14px] outline-none disabled:opacity-50 placeholder:text-[#6b7280]"
-                  style={{
-                    color: "#ffffff",
-                    caretColor: "#6366f1",
-                    fontFamily: "Manrope, sans-serif",
-                  }}
+                <Send
+                  className="w-5 h-6"
+                  style={{ color: "#a1a1aa", transform: "scaleY(-1)" }}
                 />
-                <button
-                  onClick={handleSend}
-                  disabled={isLoading || !input.trim()}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-opacity hover:bg-[#27272a]"
-                  aria-label="Send message"
-                >
-                  <Send
-                    className="w-5 h-6"
-                    style={{ color: "#a1a1aa", transform: "scaleY(-1)" }}
-                  />
-                </button>
-              </div>
+              </button>
             </div>
-          </motion.aside>
+          </div>
+        </motion.aside>
       )}
     </AnimatePresence>
   );

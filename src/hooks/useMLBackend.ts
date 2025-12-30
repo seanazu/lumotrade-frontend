@@ -27,16 +27,8 @@ const getEtTradingDateForPredictions = () => {
   if (day === 0) etNow.setDate(etNow.getDate() - 2);
   if (day === 6) etNow.setDate(etNow.getDate() - 1);
 
-  // Before market open (9:30am ET) → show previous trading day results
-  const minutes = etNow.getHours() * 60 + etNow.getMinutes();
-  const marketOpenMinutes = 9 * 60 + 30;
-  if (minutes < marketOpenMinutes) {
-    etNow.setDate(etNow.getDate() - 1);
-    while (etNow.getDay() === 0 || etNow.getDay() === 6) {
-      etNow.setDate(etNow.getDate() - 1);
-    }
-  }
-
+  // Always return today's date - let the ML backend decide what to show
+  // The backend will show today's predictions if available, or most recent
   return etNow.toISOString().slice(0, 10);
 };
 

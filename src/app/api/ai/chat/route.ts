@@ -290,10 +290,10 @@ export async function POST(request: NextRequest) {
     // Build system prompt with all context
     const systemPrompt = buildSystemPrompt(context);
 
-    // Call OpenAI with GPT-5.2
-    console.log("Calling OpenAI gpt-5.2 with comprehensive context...");
+    // Call OpenAI with GPT-4o
+    console.log("Calling OpenAI gpt-4o with comprehensive context...");
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
         ...messages,
