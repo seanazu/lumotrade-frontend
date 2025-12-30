@@ -512,7 +512,7 @@ async function fetchTradingStatus(): Promise<{
 // ============ Query Keys ============
 
 export const mlQueryKeys = {
-  prediction: ["ml", "prediction"] as const,
+  prediction: (date?: string) => ["ml", "prediction", date] as const,
   predictionHistory: (days: number) =>
     ["ml", "prediction", "history", days] as const,
   trainStatus: ["ml", "train", "status"] as const,
@@ -549,8 +549,10 @@ export function useTodayPrediction() {
     return next929.getTime() - etNow.getTime();
   };
 
+  const date = getEtTradingDateForPredictions();
+
   return useQuery({
-    queryKey: mlQueryKeys.prediction,
+    queryKey: mlQueryKeys.prediction(date),
     queryFn: fetchPrediction,
     refetchInterval: getTimeUntilNextPrediction(),
     staleTime: Infinity, // Don't refetch unless explicitly told

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Predictions</title></head>
+<body>
+<h1>Testing Predictions API</h1>
+<pre id="output">Loading...</pre>
+<script>
+  const date = new Date().toISOString().slice(0, 10);
+  console.log('Requesting predictions for date:', date);
+  
+  fetch(`/api/ml/predictions?date=${date}&page_size=100`)
+    .then(r => r.json())
+    .then(data => {
+      console.log('Response:', data);
+      const dates = [...new Set(data.predictions?.map(p => p.date) || [])];
+      document.getElementById('output').textContent = 
+        `Requested date: ${date}\n` +
+        `Total predictions: ${data.predictions?.length || 0}\n` +
+        `Unique dates in response: ${dates.sort().reverse().join(', ')}\n\n` +
+        JSON.stringify(data, null, 2);
+    })
+    .catch(e => {
+      document.getElementById('output').textContent = 'Error: ' + e.message;
+    });
+</script>
+</body>
+</html>
