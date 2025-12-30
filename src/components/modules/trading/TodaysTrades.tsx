@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Clock, DollarSign, Target, AlertCircle } from "lucide-react";
-import { ML_BACKEND_URL, ML_API_KEY } from "@/lib/env";
 
 interface Trade {
   id: string;
@@ -35,11 +34,7 @@ export function TodaysTrades() {
       const today = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
       const todayISO = new Date(today).toISOString().split('T')[0];
       
-      const response = await fetch(`${ML_BACKEND_URL}/api/trades?days=1&page_size=100`, {
-        headers: {
-          'X-API-Key': ML_API_KEY
-        }
-      });
+      const response = await fetch(`/api/ml/trades?days=1&page_size=100`);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);

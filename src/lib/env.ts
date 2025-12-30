@@ -1,36 +1,55 @@
 /**
  * Environment Variables Configuration
  * Centralized access to environment variables with validation
+ * 
+ * SECURITY NOTES:
+ * - All variables WITHOUT NEXT_PUBLIC_ prefix are SERVER-ONLY (never exposed to browser)
+ * - Variables WITH NEXT_PUBLIC_ prefix are exposed to browser (use sparingly!)
+ * - ML_BACKEND_URL and ML_API_KEY are server-only (proxied through /api/ml/* routes)
  */
 
-// API Keys
+// ============================================================================
+// SERVER-ONLY API Keys (Never exposed to browser)
+// ============================================================================
+
 export const POLYGON_API_KEY = process.env.POLYGON_API_KEY || "";
 export const MARKETAUX_API_KEY = process.env.MARKETAUX_API_KEY || "";
 export const FMP_API_KEY = process.env.FMP_API_KEY || "";
 export const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || "";
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || ""; // Optional - only if using Claude
+export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || ""; // Optional
 export const ORATS_API_KEY = process.env.ORATS_API_KEY || "";
-export const CRON_SECRET = process.env.CRON_SECRET || ""; // Required in production for cron endpoint security
+export const CRON_SECRET = process.env.CRON_SECRET || ""; // Required in production
 
-// Backend URLs
+// ============================================================================
+// SERVER-ONLY Backend URLs (Proxied through Next.js API routes)
+// ============================================================================
+
 export const ML_BACKEND_URL =
   process.env.ML_BACKEND_URL || "http://localhost:5001";
 export const ML_API_KEY = process.env.ML_API_KEY || "";
+
+// ============================================================================
+// CLIENT-ACCESSIBLE Variables (Exposed to browser with NEXT_PUBLIC_ prefix)
+// ============================================================================
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// Database
+// InstantDB App ID - Required for client-side authentication
+export const INSTANT_APP_ID = process.env.NEXT_PUBLIC_INSTANT_APP_ID || "";
+
+// ============================================================================
+// SERVER-ONLY Database Config (Legacy - using InstantDB now)
+// ============================================================================
+
+export const INSTANT_ADMIN_TOKEN = process.env.INSTANT_ADMIN_TOKEN || "";
 export const DATABASE_URL = process.env.DATABASE_URL || "";
 export const PGHOST = process.env.PGHOST || "localhost";
 export const PGPORT = parseInt(process.env.PGPORT || "5432", 10);
 export const PGDATABASE = process.env.PGDATABASE || "";
 export const PGUSER = process.env.PGUSER || "";
 export const PGPASSWORD = process.env.PGPASSWORD || "";
-
-// InstantDB
-export const INSTANT_APP_ID = process.env.NEXT_PUBLIC_INSTANT_APP_ID || "";
-export const INSTANT_ADMIN_TOKEN = process.env.INSTANT_ADMIN_TOKEN || "";
 
 // Feature Flags
 export const NODE_ENV = process.env.NODE_ENV || "development";

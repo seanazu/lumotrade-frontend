@@ -1,10 +1,12 @@
 /**
  * TanStack Query hooks for ML Backend API
  * All data fetching for the production model
+ * 
+ * Note: All requests go through Next.js API proxy routes to keep
+ * ML_API_KEY secure on the server side.
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ML_BACKEND_URL, ML_API_KEY } from "@/lib/env";
 
 const TICKER_ORDER = ["SPY", "QQQ", "IWM", "GLD", "HYG", "TLT", "XLF", "XLK"];
 const getEtDateString = () => {
@@ -173,15 +175,11 @@ async function fetchPrediction(): Promise<Prediction[] | null> {
   // - pre-open → show yesterday (validated) results
   // - after open → show today's predictions
   const date = getEtTradingDateForPredictions();
-  const url = `${ML_BACKEND_URL}/api/predictions?date=${encodeURIComponent(
+  const url = `/api/ml/predictions?date=${encodeURIComponent(
     date
   )}&page_size=100`;
 
-  const res = await fetch(url, {
-    headers: {
-      "X-API-Key": ML_API_KEY,
-    },
-  });
+  const res = await fetch(url);
 
   if (!res.ok) {
     throw new Error(`Failed to fetch predictions: ${res.status}`);
@@ -270,12 +268,7 @@ async function fetchPredictionHistory(
   if (result !== "all") params.append("result", result);
 
   const res = await fetch(
-    `${ML_BACKEND_URL}/api/predictions?${params.toString()}`,
-    {
-      headers: {
-        "X-API-Key": ML_API_KEY,
-      },
-    }
+    `/api/ml/predictions?${params.toString()}`
   );
   if (!res.ok) throw new Error("Failed to fetch prediction history");
   const data = await res.json();
@@ -331,11 +324,7 @@ async function fetchModelStatus(): Promise<ModelStatus> {
 }
 
 async function fetchModelAccuracy(): Promise<AccuracyStats> {
-  const res = await fetch(`${ML_BACKEND_URL}/api/model-health`, {
-    headers: {
-      "X-API-Key": ML_API_KEY,
-    },
-  });
+  const res = await fetch(`/api/ml/model-health`);
   if (!res.ok) throw new Error("Failed to fetch model accuracy");
   const data = await res.json();
 
@@ -346,9 +335,7 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
   // If health is null, use predictions-based stats
   if (!health || Object.keys(health).length === 0) {
     // Get recent predictions to calculate stats
-    const predsRes = await fetch(`${ML_BACKEND_URL}/api/predictions?days=30`, {
-      headers: { "X-API-Key": ML_API_KEY },
-    });
+    const predsRes = await fetch(`/api/ml/predictions?days=30`);
 
     if (predsRes.ok) {
       const predsData = await predsRes.json();
@@ -422,12 +409,7 @@ async function fetchTrades(
 
   try {
     const res = await fetch(
-      `${ML_BACKEND_URL}/api/trades?${params.toString()}`,
-      {
-        headers: {
-          "X-API-Key": ML_API_KEY,
-        },
-      }
+      `/api/ml/trades?${params.toString()}`
     );
 
     if (!res.ok) {
@@ -523,11 +505,7 @@ async function fetchTradingStatus(): Promise<{
   open_positions: number;
   daily_pnl: number;
 }> {
-  const res = await fetch(`${ML_BACKEND_URL}/api/health`, {
-    headers: {
-      "X-API-Key": ML_API_KEY,
-    },
-  });
+  const res = await fetch(`/api/ml/health`);
   if (!res.ok) throw new Error("Failed to fetch trading status");
   return res.json();
 }

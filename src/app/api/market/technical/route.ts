@@ -10,10 +10,12 @@ import {
   CompleteTechnicalAnalysis,
 } from "@/lib/api/clients/polygon-client";
 import { getOrComputeTtlCache } from "@/lib/server/api-cache";
-import { ML_BACKEND_URL } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Base URL for internal ML proxy
+const ML_PROXY_URL = "/api/ml";
 
 interface MLPrediction {
   direction: "UP" | "DOWN";
@@ -37,7 +39,7 @@ interface TechnicalAnalysisResponse {
  */
 async function fetchMLPrediction(): Promise<MLPrediction | null> {
   try {
-    const response = await fetch(`${ML_BACKEND_URL}/predict/today`, {
+    const response = await fetch(`${process.env.ML_BACKEND_URL || 'http://localhost:8000'}/predict/today`, {
       next: { revalidate: 60 },
     });
 

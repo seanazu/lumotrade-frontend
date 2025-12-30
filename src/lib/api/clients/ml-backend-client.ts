@@ -1,9 +1,8 @@
 /**
  * ML Backend Client
- * Connects Next.js frontend to Python ML backend
+ * Connects Next.js frontend to Python ML backend via proxy routes
+ * All calls go through /api/ml/* to keep API keys secure
  */
-
-import { ML_BACKEND_URL } from "@/lib/env";
 
 export interface MLPrediction {
   timestamp: string;
@@ -73,7 +72,7 @@ class MLBackendClient {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = ML_BACKEND_URL;
+    this.baseUrl = "/api/ml"; // Use proxy routes instead of direct ML backend
   }
 
   /**

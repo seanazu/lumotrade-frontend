@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calendar, TrendingUp, TrendingDown, Filter, Download } from "lucide-react";
-import { ML_BACKEND_URL, ML_API_KEY } from "@/lib/env";
 
 interface HistoricalTrade {
   id: string;
@@ -37,7 +36,7 @@ export function TradeHistory() {
 
   const fetchTradeHistory = async () => {
     try {
-      const response = await fetch(`${ML_BACKEND_URL}/api/trades?days=30&page_size=200`, {
+      const response = await fetch(`/api/ml/trades?days=30&page_size=200`);
         headers: {
           'X-API-Key': ML_API_KEY
         }
