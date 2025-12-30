@@ -3,7 +3,7 @@
 import { useState, type FC } from "react";
 import { motion } from "framer-motion";
 import { MessageSquare, Sparkles } from "lucide-react";
-import { AIChatPanel } from "@/components/modules/ai-chat/AIChatPanel";
+import { AIChatSidebar } from "@/components/design-system/organisms/AIChatSidebar";
 
 interface AIChatToggleProps {
   onClick?: () => void;
@@ -56,9 +56,7 @@ export const AIChatToggle: FC<AIChatToggleProps> = ({ onClick }) => {
         </motion.div>
       </motion.button>
 
-      {!onClick && (
-        <AIChatPanel isOpen={isOpen} onClose={() => setIsOpen(false)} />
-      )}
+      <AIChatSidebar isOpen={isOpen} onClose={() => setIsOpen(false)} />
     </>
   );
 };

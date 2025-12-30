@@ -63,9 +63,9 @@ Guidelines:
 Remember: You're a helpful AI assistant, not a certified financial advisor. Always remind users that past performance doesn't guarantee future results.`,
     };
 
-    // Call OpenAI with GPT-4
+    // Call OpenAI with GPT-5.2
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-5.2",
       messages: [systemMessage, ...messages],
       temperature: 0.7,
       max_tokens: 500,
