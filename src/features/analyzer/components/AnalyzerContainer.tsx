@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { StrategyDebugPanel } from "@/components/analyzer/StrategyDebugPanel";
 import { useStockAnalysis } from "@/hooks/useStockAnalysis";
 import { useStockChart } from "@/hooks/useStockChart";
 import { useChartAnalysis } from "@/hooks/useChartAnalysis";
@@ -234,9 +233,6 @@ export function AnalyzerContainer() {
           symbol={symbol}
         />
       </div>
-
-      {/* Debug Panel - Remove in production */}
-      <StrategyDebugPanel symbol={symbol} />
     </div>
   );
 }
