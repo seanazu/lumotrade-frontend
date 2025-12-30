@@ -44,9 +44,9 @@ export function AnalyzerChartSection({
   chartAnalysisLoading,
 }: AnalyzerChartSectionProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
       {/* Left: Chart (2/3 width) */}
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-2 min-h-[400px] sm:min-h-[500px]">
         <ChartPanel
           data={displayChartData}
           symbol={symbol}
@@ -73,7 +73,7 @@ export function AnalyzerChartSection({
         ) : chartAnalysis ? (
           <TradingPlanCard analysis={chartAnalysis} timeframe={timeframe} />
         ) : chartAnalysisLoading ? (
-          <Skeleton className="h-full rounded-xl" />
+          <Skeleton className="h-full min-h-[400px] rounded-xl" />
         ) : null}
       </div>
     </div>

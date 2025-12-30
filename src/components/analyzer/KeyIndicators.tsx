@@ -15,16 +15,16 @@ interface KeyIndicatorsProps {
 
 export function KeyIndicators({ indicators }: KeyIndicatorsProps) {
   return (
-    <div className="bg-card rounded-xl border border-border p-4">
-      <h3 className="font-semibold text-sm mb-4">Key Indicators</h3>
-      <div className="space-y-3">
+    <div className="bg-card rounded-xl border border-border p-3 sm:p-4">
+      <h3 className="font-semibold text-xs sm:text-sm mb-3 sm:mb-4">Key Indicators</h3>
+      <div className="space-y-2.5 sm:space-y-3">
         {indicators.map((indicator, i) => (
           <div key={i}>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-muted-foreground">
+            <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+              <span className="text-[10px] sm:text-xs text-muted-foreground">
                 {indicator.label}
               </span>
-              <span className="text-sm font-bold font-mono">
+              <span className="text-xs sm:text-sm font-bold font-mono">
                 {indicator.value}
               </span>
             </div>

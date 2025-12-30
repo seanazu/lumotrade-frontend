@@ -16,11 +16,11 @@ interface AIThesisCardProps {
  */
 export const AIThesisCard = memo(function AIThesisCard({ symbol, aiThesis, aiThesisLoading }: AIThesisCardProps) {
   return (
-    <div className="w-64 bg-background rounded-lg border border-border p-4 flex-shrink-0">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-5 h-5 rounded bg-indigo-500/10 flex items-center justify-center">
+    <div className="w-56 sm:w-64 bg-background rounded-lg border border-border p-3 sm:p-4 flex-shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+        <div className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
           <svg
-            className="w-3 h-3 text-indigo-500"
+            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -33,11 +33,11 @@ export const AIThesisCard = memo(function AIThesisCard({ symbol, aiThesis, aiThe
             />
           </svg>
         </div>
-        <h3 className="font-semibold text-xs">AI Thesis</h3>
+        <h3 className="font-semibold text-[11px] sm:text-xs">AI Thesis</h3>
         {aiThesis && (
           <span
             className={cn(
-              "ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+              "ml-auto px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase",
               aiThesis.sentiment === "BULLISH" && "bg-emerald-500/10 text-emerald-500",
               aiThesis.sentiment === "BEARISH" && "bg-red-500/10 text-red-500",
               aiThesis.sentiment === "NEUTRAL" && "bg-amber-500/10 text-amber-500"
@@ -47,10 +47,10 @@ export const AIThesisCard = memo(function AIThesisCard({ symbol, aiThesis, aiThe
           </span>
         )}
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed mb-2 line-clamp-3">
+      <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed mb-1.5 sm:mb-2 line-clamp-3">
         {aiThesis?.thesis || `Click Analyze to generate an AI thesis for ${symbol}.`}
       </p>
-      <div className="flex items-center justify-between text-[10px]">
+      <div className="flex items-center justify-between text-[9px] sm:text-[10px]">
         <span className="text-muted-foreground">
           {aiThesis?.conviction
             ? `${aiThesis.conviction} Conviction`

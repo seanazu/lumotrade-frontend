@@ -73,7 +73,7 @@ export function ModelMonitorContainer() {
   const { data: statusData } = useTradingStatus();
 
   const { data: historyData, isLoading: historyLoading } = usePredictionHistory(
-    0, // Use 0 to include today's predictions (timezone-safe)
+    1, // Use 1 day to reliably include today (temporary until SQL issue is fully debugged)
     predictionsPage,
     predictionsPageSize,
     predSearch,

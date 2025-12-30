@@ -26,8 +26,8 @@ export const InfoCards = memo(function InfoCards({ symbol, analysis, aiEnabled =
 
   return (
     <div className="bg-card border-b border-border">
-      <div className="px-6 py-4 overflow-x-auto">
-        <div className="flex gap-4 min-w-max">
+      <div className="px-3 sm:px-6 py-3 sm:py-4 overflow-x-auto scrollbar-thin">
+        <div className="flex gap-3 sm:gap-4 pb-1">
           <AIThesisCard
             symbol={symbol}
             aiThesis={aiThesis}

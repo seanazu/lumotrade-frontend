@@ -247,15 +247,15 @@ export function ChartPanel({
   return (
     <div className="bg-card h-full rounded-xl border border-border overflow-hidden flex flex-col">
       {/* Top Controls */}
-      <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border-b border-border flex-shrink-0 gap-2 sm:gap-0">
         {/* View Tabs */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
           {viewTabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setSelectedView(tab.toLowerCase())}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                "px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0",
                 selectedView === tab.toLowerCase()
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -267,13 +267,13 @@ export function ChartPanel({
         </div>
 
         {/* Right controls */}
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-1.5 sm:gap-2 items-center overflow-x-auto">
           {/* Chart Controls */}
-          <div className="flex gap-1 border-r border-border pr-2">
+          <div className="flex gap-0.5 sm:gap-1 border-r border-border pr-1.5 sm:pr-2">
             <button
               onClick={() => setShowLevels(!showLevels)}
               className={cn(
-                "px-2 py-1 rounded text-[10px] font-medium transition-colors",
+                "px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-[10px] font-medium transition-colors whitespace-nowrap",
                 showLevels
                   ? "bg-indigo-500/20 text-indigo-300"
                   : "text-muted-foreground hover:text-foreground"
@@ -285,7 +285,7 @@ export function ChartPanel({
             <button
               onClick={() => setShowSMAs(!showSMAs)}
               className={cn(
-                "px-2 py-1 rounded text-[10px] font-medium transition-colors",
+                "px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-[10px] font-medium transition-colors whitespace-nowrap",
                 showSMAs
                   ? "bg-blue-500/20 text-blue-300"
                   : "text-muted-foreground hover:text-foreground"
@@ -297,7 +297,7 @@ export function ChartPanel({
             <button
               onClick={() => setShowVolume(!showVolume)}
               className={cn(
-                "px-2 py-1 rounded text-[10px] font-medium transition-colors",
+                "px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[9px] sm:text-[10px] font-medium transition-colors whitespace-nowrap",
                 showVolume
                   ? "bg-emerald-500/20 text-emerald-300"
                   : "text-muted-foreground hover:text-foreground"
@@ -312,7 +312,7 @@ export function ChartPanel({
             <button
               onClick={onAnalyze}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border",
+                "px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors border whitespace-nowrap",
                 aiReady
                   ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/15"
                   : "bg-indigo-500/10 border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/15"
@@ -328,9 +328,9 @@ export function ChartPanel({
 
       {/* Timeframe Selector - Only show for Chart view */}
       {selectedView === "chart" && (
-        <div className="px-3 py-2 border-b border-border bg-muted/20 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1">
+        <div className="px-2 sm:px-3 py-2 border-b border-border bg-muted/20 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
               {timeframes.map((tf) => {
                 const isActive = timeframe === tf.label;
                 const isLocked = tf.locked;
@@ -346,7 +346,7 @@ export function ChartPanel({
                     }}
                     disabled={isLocked}
                     className={cn(
-                      "px-3 py-1 rounded text-xs font-medium transition-colors inline-flex items-center gap-1",
+                      "px-2 sm:px-3 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs font-medium transition-colors inline-flex items-center gap-1 whitespace-nowrap flex-shrink-0",
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground",
@@ -358,21 +358,21 @@ export function ChartPanel({
                     }
                   >
                     {tf.label}
-                    {isLocked && <Lock className="w-3 h-3" />}
+                    {isLocked && <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
                   </button>
                 );
               })}
             </div>
 
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground">
+            <div className="sm:ml-auto flex items-center">
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground">
                 💡 Chart loads 2 years • Zoom changes visible range
               </span>
             </div>
           </div>
 
           {showPaywallHint && (
-            <div className="mt-2 text-xs text-muted-foreground">
+            <div className="mt-2 text-[10px] sm:text-xs text-muted-foreground">
               Only <span className="font-semibold text-foreground">1M</span>{" "}
               timeframe is available. Upgrade to{" "}
               <span className="font-semibold text-foreground">Pro</span> to
