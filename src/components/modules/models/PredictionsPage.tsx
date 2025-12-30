@@ -82,6 +82,8 @@ function TodayPredictionCard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {predictions.map((prediction) => {
           const isUp = prediction.direction === "UP";
+          const isDown = prediction.direction === "DOWN";
+          const isHold = prediction.direction === "HOLD";
           
           return (
             <motion.div
@@ -94,7 +96,7 @@ function TodayPredictionCard() {
               <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
                 <span className="text-lg font-bold text-foreground">{prediction.ticker}</span>
                 <div className={`px-2 py-1 rounded text-xs font-medium ${
-                  isUp ? "bg-up/10 text-up" : "bg-down/10 text-down"
+                  isUp ? "bg-up/10 text-up" : isDown ? "bg-down/10 text-down" : "bg-muted text-muted-foreground"
                 }`}>
                   {prediction.direction}
                 </div>
@@ -104,12 +106,14 @@ function TodayPredictionCard() {
               <div className="p-4 space-y-3">
                 {/* Direction Icon */}
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  isUp ? "bg-up/10" : "bg-down/10"
+                  isUp ? "bg-up/10" : isDown ? "bg-down/10" : "bg-muted"
                 }`}>
                   {isUp ? (
                     <TrendingUp className="w-6 h-6 text-up" />
-                  ) : (
+                  ) : isDown ? (
                     <TrendingDown className="w-6 h-6 text-down" />
+                  ) : (
+                    <Target className="w-6 h-6 text-muted-foreground" />
                   )}
                 </div>
 
@@ -126,17 +130,17 @@ function TodayPredictionCard() {
                       initial={{ width: 0 }}
                       animate={{ width: `${(prediction.confidence || 0) * 100}%` }}
                       transition={{ duration: 0.5, delay: 0.2 }}
-                      className={`h-full ${isUp ? "bg-up" : "bg-down"}`}
+                      className={`h-full ${isUp ? "bg-up" : isDown ? "bg-down" : "bg-primary"}`}
                     />
                   </div>
                 </div>
 
                 {/* Magnitude */}
-                {prediction.magnitude !== undefined && (
+                {prediction.magnitude !== undefined && Math.abs(prediction.magnitude) > 0.001 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Expected Move</span>
-                    <span className={`font-semibold ${isUp ? "text-up" : "text-down"}`}>
-                      {isUp ? '+' : ''}{(prediction.magnitude * 100).toFixed(2)}%
+                    <span className={`font-semibold ${isUp ? "text-up" : isDown ? "text-down" : "text-muted-foreground"}`}>
+                      {prediction.magnitude > 0 ? '+' : ''}{(prediction.magnitude * 100).toFixed(2)}%
                     </span>
                   </div>
                 )}
@@ -159,6 +163,8 @@ function TodayPredictionCard() {
 
 function PredictionHistoryItem({ prediction, index }: { prediction: Prediction; index: number }) {
   const isUp = prediction.direction === "UP";
+  const isDown = prediction.direction === "DOWN";
+  const isHold = prediction.direction === "HOLD";
 
   return (
     <motion.div
@@ -170,13 +176,15 @@ function PredictionHistoryItem({ prediction, index }: { prediction: Prediction; 
       {/* Direction Icon */}
       <div
         className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-          isUp ? "bg-up/10" : "bg-down/10"
+          isUp ? "bg-up/10" : isDown ? "bg-down/10" : "bg-muted"
         }`}
       >
         {isUp ? (
           <TrendingUp className="w-5 h-5 text-up" />
-        ) : (
+        ) : isDown ? (
           <TrendingDown className="w-5 h-5 text-down" />
+        ) : (
+          <Target className="w-5 h-5 text-muted-foreground" />
         )}
       </div>
 
