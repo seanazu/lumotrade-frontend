@@ -28,15 +28,9 @@ const MarketOverviewContainer = dynamic(
  * Main entry point for the market overview dashboard
  */
 export default function Home() {
-  const [isAIBriefOpen, setIsAIBriefOpen] = useState(false);
-
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell
-        alertCount={0}
-        userEmail="user@example.com"
-        onChatClick={() => setIsAIBriefOpen(true)}
-      >
+      <AppShell alertCount={0} userEmail="user@example.com">
         <MarketOverviewContainer />
       </AppShell>
     </QueryClientProvider>

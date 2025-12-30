@@ -5,7 +5,6 @@ import { TopBar } from "./TopBar";
 
 export interface AppShellProps {
   topBarContent?: ReactNode;
-  onChatClick?: () => void;
   alertCount?: number;
   userEmail?: string;
   children: ReactNode;
@@ -13,7 +12,6 @@ export interface AppShellProps {
 
 const AppShell: FC<AppShellProps> = ({
   topBarContent,
-  onChatClick,
   alertCount,
   userEmail,
   children,
@@ -21,7 +19,6 @@ const AppShell: FC<AppShellProps> = ({
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <TopBar
-        onChatClick={onChatClick}
         alertCount={alertCount}
         userEmail={userEmail}
       >

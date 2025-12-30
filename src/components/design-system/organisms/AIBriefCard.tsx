@@ -10,10 +10,6 @@ import {
   PositionSizeInput,
 } from "@/components/trading";
 
-interface AIBriefCardProps {
-  onChatClick?: () => void;
-}
-
 /**
  * Lumo's Picks - AI-powered trading opportunities
  *
@@ -23,7 +19,7 @@ interface AIBriefCardProps {
  * - Position sizing calculator
  * - Market regime and sentiment context
  */
-export function AIBriefCard({ onChatClick }: AIBriefCardProps) {
+export function AIBriefCard() {
   const { data, isLoading, error, isError } = useTradingOpportunities();
   const [positionRisk, setPositionRisk] = useState(500);
   const [isPending, startTransition] = useTransition();

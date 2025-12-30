@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 
 export interface TopBarProps {
   onMenuClick?: () => void;
-  onChatClick?: () => void;
   alertCount?: number;
   userEmail?: string;
   children?: React.ReactNode;
@@ -30,7 +29,6 @@ export interface TopBarProps {
 
 const TopBar: React.FC<TopBarProps> = ({
   onMenuClick,
-  onChatClick,
   alertCount = 0,
   userEmail,
   children,
@@ -129,7 +127,7 @@ const TopBar: React.FC<TopBarProps> = ({
           {/* Right section - Actions */}
           <div className="flex items-center gap-1">
             {/* AI Chat Toggle */}
-            <AIChatToggle onClick={onChatClick} />
+            <AIChatToggle />
 
             {/* Theme Toggle */}
             <ThemeToggle />

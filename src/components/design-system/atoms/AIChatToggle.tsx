@@ -5,25 +5,13 @@ import { motion } from "framer-motion";
 import { MessageSquare, Sparkles } from "lucide-react";
 import { AIChatSidebar } from "@/components/design-system/organisms/AIChatSidebar";
 
-interface AIChatToggleProps {
-  onClick?: () => void;
-}
-
-export const AIChatToggle: FC<AIChatToggleProps> = ({ onClick }) => {
+export const AIChatToggle: FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-    } else {
-      setIsOpen(true);
-    }
-  };
 
   return (
     <>
       <motion.button
-        onClick={handleClick}
+        onClick={() => setIsOpen(true)}
         className="relative p-2 rounded-lg hover:bg-primary/10 transition-colors group"
         aria-label="Open AI Chat"
         data-onboarding="ai-chat"
