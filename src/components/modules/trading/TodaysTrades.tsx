@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Clock, DollarSign, Target, AlertCircle } from "lucide-react";
+import { ML_BACKEND_URL, ML_API_KEY } from "@/lib/env";
 
 interface Trade {
   id: string;
@@ -30,9 +31,6 @@ export function TodaysTrades() {
 
   const fetchTodaysTrades = async () => {
     try {
-      const ML_BACKEND_URL = process.env.NEXT_PUBLIC_ML_BACKEND_URL || 'https://lumotrade-api-995037988776.us-central1.run.app';
-      const ML_API_KEY = process.env.NEXT_PUBLIC_ML_API_KEY || '';
-      
       // Get today's date in ET timezone
       const today = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
       const todayISO = new Date(today).toISOString().split('T')[0];

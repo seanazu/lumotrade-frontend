@@ -10,13 +10,10 @@ import {
   CompleteTechnicalAnalysis,
 } from "@/lib/api/clients/polygon-client";
 import { getOrComputeTtlCache } from "@/lib/server/api-cache";
+import { ML_BACKEND_URL } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-// ML Backend URL
-const ML_BACKEND_URL =
-  process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
 
 interface MLPrediction {
   direction: "UP" | "DOWN";

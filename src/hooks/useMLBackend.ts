@@ -4,10 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-const ML_BACKEND_URL =
-  process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
-const ML_API_KEY = process.env.NEXT_PUBLIC_ML_API_KEY || "";
+import { ML_BACKEND_URL, ML_API_KEY } from "@/lib/env";
 
 const TICKER_ORDER = ["SPY", "QQQ", "IWM", "GLD", "HYG", "TLT", "XLF", "XLK"];
 const getEtDateString = () => {

@@ -3,7 +3,7 @@
  * Connects Next.js frontend to Python ML backend
  */
 
-const ML_BACKEND_URL = process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
+import { ML_BACKEND_URL } from "@/lib/env";
 
 export interface MLPrediction {
   timestamp: string;
