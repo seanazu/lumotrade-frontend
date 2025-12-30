@@ -6,6 +6,7 @@ import { FilterBar } from "./FilterBar";
 import { PredictionsTable } from "./PredictionsTable";
 import { Pagination } from "./Pagination";
 import type { Prediction, PaginationData, FilterConfig } from "../types";
+import { PredictionsPage } from "@/components/modules/models/PredictionsPage";
 
 interface PredictionsTabProps {
   predictions: Prediction[];
@@ -41,8 +42,12 @@ export function PredictionsTab({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3 }}
-      className="space-y-4"
+      className="space-y-8"
     >
+      {/* Today's Predictions */}
+      <PredictionsPage />
+
+      {/* Prediction History */}
       <div>
         <h2 className="text-lg font-semibold mb-1">All Predictions</h2>
         <p className="text-sm text-muted-foreground">
