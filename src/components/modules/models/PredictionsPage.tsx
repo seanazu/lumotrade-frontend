@@ -260,7 +260,11 @@ function Pagination({
 
 export function PredictionsPage() {
   const [page, setPage] = useState(1);
-  const { data: history, isLoading: historyLoading, error: historyError } = usePredictionHistory(page, 10);
+  const { data: history, isLoading: historyLoading, error: historyError } = usePredictionHistory(
+    90, // days - fetch last 90 days
+    page, // current page
+    50 // page size
+  );
 
   return (
     <div className="space-y-8">

@@ -564,7 +564,7 @@ export function useTodayPrediction() {
  * Fetch prediction history with pagination
  */
 export function usePredictionHistory(
-  days: number = 30,
+  days: number = 90,
   page: number = 1,
   pageSize: number = 50,
   search: string = "",
