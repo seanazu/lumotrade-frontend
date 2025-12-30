@@ -120,9 +120,10 @@ export const rateLimiter = new RateLimiter();
 
 // Rate limit configurations for different APIs
 export const rateLimitConfigs = {
-  // Polygon.io: 5 requests per minute for free tier
+  // Polygon.io rate limits (update based on your plan)
+  // Free: 5/min | Starter: 100/min | Developer: 1000/min | Advanced: Unlimited
   polygon: {
-    maxRequests: 5,
+    maxRequests: 100, // Update this based on your plan
     windowMs: 60 * 1000, // 1 minute
   },
   // Marketaux: 100 requests per day for free tier
@@ -135,13 +136,19 @@ export const rateLimitConfigs = {
     maxRequests: 250,
     windowMs: 24 * 60 * 60 * 1000, // 24 hours
   },
-  // Finnhub: 60 requests per minute for free tier
+  // Finnhub rate limits (update based on your plan)
+  // Free: 60/min | Paid plans: Higher limits
   finnhub: {
-    maxRequests: 60,
+    maxRequests: 200, // Update this based on your plan (60 for free, 200+ for paid)
     windowMs: 60 * 1000, // 1 minute
   },
   // EODHD: Conservative limit (varies by plan)
   eodhd: {
+    maxRequests: 100,
+    windowMs: 60 * 1000, // 1 minute
+  },
+  // ORATS: Options data API
+  orats: {
     maxRequests: 100,
     windowMs: 60 * 1000, // 1 minute
   },

@@ -30,9 +30,10 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   // Use InstantDB's built-in auth hook
-  const { user: instantUser, isLoading, error } = db.useAuth();
+  const { user: instantUser, isLoading: instantLoading, error } = db.useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isCheckingWhitelist, setIsCheckingWhitelist] = useState(false);
 
   // Query user record to check isWhitelisted
   const userQuery = db.useQuery(
@@ -54,11 +55,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (!instantUser) {
       setUser(null);
       setAuthError(null);
+      setIsCheckingWhitelist(false);
       return;
     }
 
     // Wait for user query to load
     if (userQuery.isLoading) {
+      setIsCheckingWhitelist(true);
       return;
     }
 
@@ -72,6 +75,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setAuthError(
         "Access denied. Your account has not been approved. Please contact an administrator."
       );
+      setIsCheckingWhitelist(false);
       return;
     }
 
@@ -83,7 +87,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
     setUser(userData);
     setAuthError(null);
-  }, [instantUser, isLoading, userQuery.isLoading, userQuery.data]);
+    setIsCheckingWhitelist(false);
+  }, [instantUser, userQuery.isLoading, userQuery.data]);
 
   // Handle auth errors
   useEffect(() => {
@@ -124,11 +129,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Consider loading if either InstantDB is loading OR we're checking whitelist
+  // Also keep loading state true if we have instantUser but haven't finished whitelist check
+  const finalIsLoading = instantLoading || isCheckingWhitelist || (!!instantUser && !user && !authError);
+
   return (
     <UserContext.Provider
       value={{
         user,
-        isLoading,
+        isLoading: finalIsLoading,
         authError,
         sendMagicCode,
         signInWithMagicCode,

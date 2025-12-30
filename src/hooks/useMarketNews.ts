@@ -64,9 +64,9 @@ export function useMarketNews(limit: number = 20) {
   return useQuery({
     queryKey: ['market', 'news', limit],
     queryFn: () => fetchMarketNews(limit),
-    staleTime: 10 * 60 * 1000, // Consider data stale after 10 minutes (news doesn't change rapidly)
-    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
-    refetchInterval: 10 * 60 * 1000, // Auto-refresh every 10 minutes
+    staleTime: 30 * 60 * 1000, // Consider data stale after 30 minutes (news doesn't change rapidly)
+    gcTime: 60 * 60 * 1000, // Keep in cache for 60 minutes
+    refetchInterval: 30 * 60 * 1000, // Auto-refresh every 30 minutes
     refetchOnWindowFocus: false, // Don't refetch on focus (news is not time-critical)
     refetchOnMount: false, // Don't refetch if data is fresh
     retry: 2, // Retry failed requests 2 times

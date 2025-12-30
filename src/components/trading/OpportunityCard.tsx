@@ -22,10 +22,12 @@ export function OpportunityCard({
   isPending,
   onAnalyze,
 }: OpportunityCardProps) {
-  const setupConfig = SETUP_CONFIGS[opp.setupType] || {
-    label: opp.setupType.toUpperCase(),
-    icon: "💡",
-  };
+  const setupConfig = opp.setupType && SETUP_CONFIGS[opp.setupType] 
+    ? SETUP_CONFIGS[opp.setupType]
+    : {
+        label: opp.setupType?.toUpperCase() || "OPPORTUNITY",
+        icon: "💡",
+      };
 
   const shares = calculateShares(
     opp.entry.price,

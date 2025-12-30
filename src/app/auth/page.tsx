@@ -18,9 +18,21 @@ export default function AuthPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      console.log("✅ User already authenticated, redirecting to home");
-      router.push("/");
-      router.refresh();
+      console.log("✅ User already authenticated, redirecting");
+      // Check if there's a stored redirect path
+      const redirectPath = typeof window !== "undefined" 
+        ? sessionStorage.getItem("redirectAfterAuth") 
+        : null;
+      
+      if (redirectPath && redirectPath !== "/auth") {
+        // Clear the stored path and redirect to it
+        sessionStorage.removeItem("redirectAfterAuth");
+        console.log(`Redirecting to stored path: ${redirectPath}`);
+        router.push(redirectPath);
+      } else {
+        // Default to home page
+        router.push("/");
+      }
     }
   }, [user, router]);
 

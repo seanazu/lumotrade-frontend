@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MarketAnalyzer } from "@/lib/trading";
+import { AdvancedStockScreener } from "@/lib/trading/advanced-screener";
 import { openaiClient } from "@/lib/api/clients/openai-client";
-import { MarketAnalyzer, StockScreener, StockAnalyzer } from "@/lib/trading";
 import { getEtDateString } from "@/lib/server/time";
-import { getOrComputeDailyCache } from "@/lib/server/api-cache";
+import { getOrComputeDailyCache } from "@/lib/server/file-cache";
 
 const CACHE_DURATION = 900; // 15 minutes
 const STALE_WHILE_REVALIDATE = 1800; // 30 minutes
@@ -30,17 +31,20 @@ export async function GET(request: NextRequest) {
       dateEt,
       forceRefresh,
       compute: async () => {
-        console.log("🎯 Starting AI Trading Opportunities analysis...");
+        console.log("🎯 Starting advanced multi-source stock screening...");
 
         // Analyze market conditions
         const marketContext = await MarketAnalyzer.getMarketContext();
         console.log("📊 Market context:", marketContext);
 
-        // Screen for quality candidates
-        const candidates = await StockScreener.screenCandidates(marketContext);
-        console.log(`🔍 Found ${candidates.length} candidates`);
+        // Use advanced screener with all data sources to get top candidates
+        const enrichedCandidates = await AdvancedStockScreener.findOpportunities(
+          marketContext,
+          10 // Get top 10 candidates for AI to analyze
+        );
+        console.log(`🎯 Found ${enrichedCandidates.length} enriched opportunities`);
 
-        if (candidates.length === 0) {
+        if (enrichedCandidates.length === 0) {
           return {
             opportunities: [],
             marketContext,
@@ -49,28 +53,76 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // Analyze top candidates with technical data
-        const analyzedCandidates = await StockAnalyzer.analyzeCandidates(
-          candidates.slice(0, 10)
-        );
-        console.log(
-          `📈 Analyzed ${analyzedCandidates.length} candidates in detail`
-        );
+        // Convert enriched candidates to format OpenAI can analyze
+        const candidatesForAI = enrichedCandidates.map((stock) => ({
+          symbol: stock.symbol,
+          name: stock.companyInfo?.name || stock.symbol,
+          price: stock.price,
+          changePercent: stock.changePercent,
+          volume: stock.volume,
+          avgVolume: stock.avgVolume,
+          marketCap: stock.marketCap,
+          score: stock.score,
+          signals: stock.signals,
+          catalysts: stock.catalysts,
+          insiderBuying: stock.insiderBuying,
+          analystRating: stock.analystRating,
+          newsSentiment: stock.newsSentiment,
+          optionsFlow: stock.optionsFlow,
+          rsi: stock.rsi,
+          macdSignal: stock.macdSignal,
+          trend: stock.trend,
+        }));
 
-        // Let AI select best opportunities
-        const opportunities = await openaiClient.analyzeTradingOpportunities(
-          analyzedCandidates,
+        // 🤖 Use OpenAI to analyze all candidates and select the BEST 2
+        console.log("🤖 Sending candidates to OpenAI for final analysis...");
+        const aiOpportunities = await openaiClient.analyzeTradingOpportunities(
+          candidatesForAI,
           marketContext
         );
-        console.log(`✅ AI selected ${opportunities.length} opportunities`);
+        
+        console.log(`✅ OpenAI selected ${aiOpportunities.length} opportunities`);
 
-        // Enhance with real-time catalysts
-        if (opportunities.length > 0) {
-          await enhanceWithCatalysts(opportunities);
+        if (aiOpportunities.length === 0) {
+          console.warn("⚠️ OpenAI returned no opportunities, using top 2 from screener");
+          // Fallback: use top 2 from our screener if AI fails
+          const opportunities = enrichedCandidates.slice(0, 2).map((stock) => {
+            const entryPrice = stock.price;
+            const targetPrice = stock.price * 1.08;
+            const stopLossPrice = stock.price * 0.95;
+            const riskReward = (targetPrice - entryPrice) / (entryPrice - stopLossPrice);
+            
+            return {
+              symbol: stock.symbol,
+              name: stock.companyInfo?.name || stock.symbol,
+              setupType: stock.trend === "bullish" ? "momentum_breakout" : undefined,
+              entry: {
+                price: entryPrice,
+                range: { min: entryPrice * 0.995, max: entryPrice * 1.005 },
+              },
+              target: { price: targetPrice, percentage: 8.0 },
+              stopLoss: { price: stopLossPrice, percentage: 5.0 },
+              riskReward: parseFloat(riskReward.toFixed(2)),
+              winRate: Math.min(75, Math.max(55, Math.floor(stock.score * 0.7))),
+              timeframe: "3-7 days",
+              reasoning: [
+                `Score: ${stock.score}/100`,
+                ...stock.signals,
+                stock.catalysts && stock.catalysts.length > 0 
+                  ? `Catalysts: ${stock.catalysts.join(", ")}`
+                  : "",
+              ].filter(Boolean).join(" • "),
+              probability: Math.floor(stock.score * 0.8),
+              confidence: stock.score,
+            };
+          });
+
+          return { opportunities, marketContext };
         }
 
+        // Return AI-selected opportunities (already in correct format)
         return {
-          opportunities,
+          opportunities: aiOpportunities,
           marketContext,
         };
       },
@@ -101,24 +153,6 @@ export async function GET(request: NextRequest) {
 /**
  * Enhance opportunities with real-time catalyst information
  */
-async function enhanceWithCatalysts(opportunities: any[]): Promise<void> {
-  try {
-    const symbols = opportunities.map((o) => o.symbol);
-    const catalysts = await openaiClient.searchMarketCatalysts(symbols);
-    console.log("📰 Found catalysts:", catalysts);
-
-    opportunities.forEach((opp) => {
-      const stockCatalysts = catalysts[opp.symbol];
-      if (stockCatalysts?.length > 0) {
-        opp.reasoning = `${opp.reasoning}\n\n📰 Recent Catalysts: ${stockCatalysts.join("; ")}`;
-      }
-    });
-  } catch (error) {
-    console.error("Error fetching catalysts:", error);
-    // Non-critical, continue without catalysts
-  }
-}
-
 /**
  * Create standardized API response with caching headers
  */

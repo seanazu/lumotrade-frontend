@@ -80,6 +80,16 @@ type Schema = {
     updatedAt: number;
     createdAt: number;
   };
+  // API Cache entries (for pre-generated content)
+  apiCache: {
+    id: string;
+    cacheKey: string; // e.g., "trading:opportunities:v1"
+    scope: string; // e.g., "daily:2024-12-30"
+    payload: string; // JSON stringified data
+    expiresAt?: number; // Timestamp in ms (null for daily caches)
+    createdAt: number;
+    updatedAt: number;
+  };
 };
 
 // Initialize InstantDB

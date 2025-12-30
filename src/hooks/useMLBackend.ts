@@ -370,7 +370,7 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
           withResults.length > 0 ? correct.length / withResults.length : 0,
         sharpe_ratio: 7.14, // From historical validation
         total_return: account.total_pnl_pct || 0,
-        trade_count: withResults.length,
+        trade_count: withResults.length, // This is prediction count, will be fixed when health endpoint works
         win_rate:
           withResults.length > 0 ? correct.length / withResults.length : 0,
         avg_confidence: 0.7,
@@ -381,16 +381,16 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
 
   return {
     accuracy: health.accuracy || 0,
-    total_predictions: health.test_samples || 0,
+    total_predictions: health.total_predictions || 0,
     correct_predictions: Math.round(
-      (health.accuracy || 0) * (health.test_samples || 0)
+      (health.accuracy || 0) * (health.total_predictions || 0)
     ),
     accuracy_last_30_days: health.accuracy || 0,
     sharpe_ratio: health.sharpe_ratio || null,
     total_return: account.total_pnl_pct || 0,
-    trade_count: health.test_samples || 0,
-    win_rate: health.win_rate || 0,
-    avg_confidence: 0.7,
+    trade_count: health.trade_signals || 0, // Number of tradeable signals
+    win_rate: health.accuracy || 0, // Use prediction accuracy as win rate proxy
+    avg_confidence: health.avg_confidence || 0.7,
     last_updated: health.check_date || new Date().toISOString(),
   };
 }

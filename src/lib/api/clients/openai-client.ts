@@ -8,7 +8,7 @@ import OpenAI from "openai";
 interface TradingOpportunity {
   symbol: string;
   name: string;
-  setupType:
+  setupType?:
     | "momentum_breakout"
     | "mean_reversion"
     | "options_play"
@@ -45,22 +45,41 @@ interface StockCandidate {
   symbol: string;
   name: string;
   price: number;
-  change: number;
+  change?: number;
   changePercent: number;
   volume: number;
   avgVolume: number;
+  marketCap?: number;
+  score?: number;
+  signals?: string[];
+  catalysts?: string[];
+  insiderBuying?: number;
+  analystRating?: {
+    buy: number;
+    hold: number;
+    sell: number;
+  };
+  newsSentiment?: string;
   rsi?: number;
   macd?: number;
+  macdSignal?: "bullish" | "bearish" | "neutral";
+  trend?: "bullish" | "bearish" | "neutral";
   movingAverages?: {
     sma20: number;
     sma50: number;
     sma200: number;
   };
   optionsFlow?: {
-    callVolume: number;
-    putVolume: number;
-    callPutRatio: number;
-    unusualActivity: boolean;
+    unusualCallActivity?: boolean;
+    unusualPutActivity?: boolean;
+    putCallRatio?: number;
+    ivRank?: number;
+    sweepsCount?: number;
+    // Legacy fields for backward compatibility
+    callVolume?: number;
+    putVolume?: number;
+    callPutRatio?: number;
+    unusualActivity?: boolean;
   };
   news?: Array<{
     headline: string;
@@ -72,7 +91,7 @@ interface StockCandidate {
 
 class OpenAIClient {
   private client: OpenAI;
-  private model = "gpt-5.2"; // Latest model with web search
+  private model = "gpt-5.2"; // Model with web search capabilities
 
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -128,7 +147,70 @@ class OpenAIClient {
       }
 
       const parsed = JSON.parse(response);
-      return parsed.opportunities || [];
+      const opportunities = parsed.opportunities || [];
+
+      // Validate and normalize each opportunity
+      const validOpportunities = opportunities
+        .filter((opp: any) => {
+          // Ensure all required fields exist
+          const hasBasics = opp.symbol && opp.name;
+          const hasEntry = opp.entry?.price && opp.entry?.range;
+          const hasTarget =
+            opp.target?.price && opp.target?.percentage !== undefined;
+          const hasStopLoss =
+            opp.stopLoss?.price && opp.stopLoss?.percentage !== undefined;
+          const hasMetrics =
+            opp.riskReward && opp.winRate && opp.timeframe && opp.reasoning;
+
+          if (
+            !hasBasics ||
+            !hasEntry ||
+            !hasTarget ||
+            !hasStopLoss ||
+            !hasMetrics
+          ) {
+            console.warn(`⚠️ Skipping invalid opportunity ${opp.symbol}:`, {
+              hasBasics,
+              hasEntry,
+              hasTarget,
+              hasStopLoss,
+              hasMetrics,
+            });
+            return false;
+          }
+          return true;
+        })
+        .map((opp: any) => ({
+          symbol: opp.symbol,
+          name: opp.name,
+          setupType: opp.setupType || undefined,
+          entry: {
+            price: parseFloat(opp.entry.price),
+            range: {
+              min: parseFloat(opp.entry.range.min),
+              max: parseFloat(opp.entry.range.max),
+            },
+          },
+          target: {
+            price: parseFloat(opp.target.price),
+            percentage: parseFloat(opp.target.percentage),
+          },
+          stopLoss: {
+            price: parseFloat(opp.stopLoss.price),
+            percentage: parseFloat(opp.stopLoss.percentage),
+          },
+          riskReward: parseFloat(opp.riskReward),
+          winRate: parseInt(opp.winRate),
+          timeframe: opp.timeframe,
+          reasoning: opp.reasoning,
+          probability: parseInt(opp.probability || opp.winRate || 50),
+          confidence: parseInt(opp.confidence || 70),
+        }));
+
+      console.log(
+        `✅ Validated ${validOpportunities.length}/${opportunities.length} opportunities`
+      );
+      return validOpportunities;
     } catch (error) {
       console.error(
         "Error analyzing trading opportunities with OpenAI:",
@@ -176,6 +258,75 @@ class OpenAIClient {
     } catch (error) {
       console.error("Error searching market catalysts:", error);
       return {};
+    }
+  }
+
+  /**
+   * Discover trending stocks using GPT-5.2 with web search
+   */
+  async discoverTrendingStocks(
+    marketContext: MarketContext
+  ): Promise<string[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
+
+    try {
+      const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      const searchQuery = `You have web search capabilities. Use them to find trending mid-cap growth stocks TODAY (${today}).
+
+Market Context:
+- Sentiment: ${marketContext.sentiment}
+- VIX: ${marketContext.vixLevel}
+- SPY Performance: ${marketContext.spyPerformance > 0 ? "+" : ""}${marketContext.spyPerformance.toFixed(2)}%
+- Hot Sectors: ${marketContext.topSectors.join(", ")}
+
+Please search the web for:
+1. Stocks with unusual volume or options activity (check StockTwits, social media)
+2. Stocks with breaking news or earnings beats (check financial news)
+3. Stocks in hot sectors making breakouts
+4. Mid-cap growth stocks ($2B-$50B) with institutional buying
+5. Stocks with new catalysts
+
+Return 8-12 stock symbols that are genuinely trending based on current web data.`;
+
+      const completion = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You have web search capabilities. Use them to search financial news, Twitter, StockTwits, and trading forums for trending stocks. Return a JSON object with a 'symbols' array containing 8-12 stock tickers trending today. IMPORTANT: Actually search the web, don't just make recommendations based on training data.",
+          },
+          {
+            role: "user",
+            content: searchQuery,
+          },
+        ],
+        temperature: 0.5,
+        response_format: { type: "json_object" },
+      });
+
+      const response = completion.choices[0]?.message?.content;
+      if (!response) {
+        console.warn("⚠️ OpenAI returned empty response for trending stocks");
+        return [];
+      }
+
+      console.log("📡 OpenAI raw response:", response.substring(0, 300));
+      const parsed = JSON.parse(response);
+      const symbols = parsed.symbols || [];
+      console.log(`✅ Parsed ${symbols.length} symbols from AI:`, symbols);
+      return symbols;
+    } catch (error) {
+      console.error("❌ Error discovering trending stocks:", error);
+      return [];
     }
   }
 
@@ -275,73 +426,131 @@ Return a JSON object with: regime, confidence (0-100), reasoning, tradingStrateg
     candidates: StockCandidate[],
     marketContext: MarketContext
   ): string {
-    return `You are an elite day trader and market analyst. Analyze these stock candidates and identify the TOP 1-2 BEST trading opportunities right now.
+    return `You are an elite institutional trader hunting for the next 100%+ multi-bagger opportunities, not just 10% moves.
+
+MISSION: Find stocks with STRUCTURAL CATALYSTS that could explode 3x-10x, like SanDisk (+594% in 2025) or Western Digital (+303%).
 
 CURRENT MARKET CONTEXT:
 - Market Regime: ${marketContext.regime}
 - Market Sentiment: ${marketContext.sentiment}
 - VIX Level: ${marketContext.vixLevel}
 - SPY Performance: ${marketContext.spyPerformance > 0 ? "+" : ""}${marketContext.spyPerformance.toFixed(2)}%
-- Strong Sectors: ${marketContext.topSectors.join(", ")}
+- Hot Sectors: ${marketContext.topSectors.join(", ")}
+- Date: ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
 
-STOCK CANDIDATES:
+PRE-SCREENED CANDIDATES (Multi-Factor Analysis):
 ${candidates
   .map(
     (c, idx) => `
-${idx + 1}. ${c.symbol} (${c.name})
-   Price: $${c.price} (${c.changePercent > 0 ? "+" : ""}${c.changePercent.toFixed(2)}%)
-   Volume: ${(c.volume / 1000000).toFixed(1)}M (${((c.volume / c.avgVolume) * 100).toFixed(0)}% of avg)
-   ${c.rsi ? `RSI: ${c.rsi.toFixed(1)}` : ""}
-   ${c.movingAverages ? `Price vs 20MA: ${((c.price / c.movingAverages.sma20 - 1) * 100).toFixed(1)}%` : ""}
-   ${c.optionsFlow ? `Options: C/P Ratio ${c.optionsFlow.callPutRatio.toFixed(2)}${c.optionsFlow.unusualActivity ? " 🔥 UNUSUAL ACTIVITY" : ""}` : ""}
-   ${c.news && c.news.length > 0 ? `Latest News: ${c.news[0].headline}` : ""}
-   ${c.sector ? `Sector: ${c.sector}` : ""}
+${idx + 1}. ${c.symbol} - ${c.name}
+   📊 COMPOSITE SCORE: ${c.score || "N/A"}/100
+   
+   💰 PRICE ACTION:
+   - Current: $${c.price?.toFixed(2)} (${c.changePercent > 0 ? "+" : ""}${c.changePercent?.toFixed(2)}%)
+   - Volume: ${(c.volume / 1000000).toFixed(1)}M (${(c.volume / c.avgVolume).toFixed(1)}x average)
+   - Market Cap: $${((c.marketCap || 0) / 1000000).toFixed(0)}M
+   ${c.rsi ? `- RSI: ${c.rsi.toFixed(1)} ${c.rsi < 30 ? "(OVERSOLD)" : c.rsi > 70 ? "(OVERBOUGHT)" : "(HEALTHY)"}` : ""}
+   ${c.trend ? `- Trend: ${c.trend.toUpperCase()}` : ""}
+   
+   🎯 MULTI-FACTOR SIGNALS:
+   ${c.signals && c.signals.length > 0 ? c.signals.map(s => `   - ${s}`).join("\n") : "   - None"}
+   
+   📰 CATALYSTS & NEWS:
+   ${c.catalysts && c.catalysts.length > 0 ? c.catalysts.map(cat => `   - ${cat}`).join("\n") : "   - None detected"}
+   ${c.newsSentiment ? `   - News Sentiment: ${c.newsSentiment.toUpperCase()}` : ""}
+   
+   👔 SMART MONEY SIGNALS:
+   ${c.insiderBuying ? `   - ${c.insiderBuying} insider buy(s) in last 30 days ${c.insiderBuying >= 3 ? "🔥 STRONG SIGNAL" : ""}` : "   - No recent insider buying"}
+   ${c.analystRating ? `   - Analyst Rating: ${c.analystRating.buy} BUY, ${c.analystRating.hold} HOLD, ${c.analystRating.sell} SELL` : ""}
+   ${c.optionsFlow ? `   - Options Flow: P/C Ratio ${c.optionsFlow.putCallRatio?.toFixed(2) || "N/A"}, IV Rank ${c.optionsFlow.ivRank || 0}%` : ""}
+   ${c.optionsFlow?.unusualCallActivity ? `   - 🔥 UNUSUAL CALL ACTIVITY DETECTED` : ""}
+   ${c.optionsFlow && (c.optionsFlow.sweepsCount || 0) > 0 ? `   - 🎯 ${c.optionsFlow.sweepsCount} OPTIONS SWEEPS (Institutional positioning!)` : ""}
 `
   )
   .join("\n")}
 
-INSTRUCTIONS:
-1. PRIORITIZE GROWTH STOCKS with high potential - look for the next BIG MOVERS before they explode
-2. AVOID obvious mega-caps (AAPL, MSFT, etc.) - focus on mid-cap growth stories with momentum
-3. Select ONLY the 1-2 BEST unconventional opportunities with genuine breakout potential
-4. Consider: strong growth narrative, institutional accumulation, technical breakout setup, news catalysts, sector tailwinds
-5. For each opportunity, provide:
-   - Setup type: momentum_breakout, mean_reversion, options_play, or swing_trade
-   - Specific entry price and range
-   - Target price with percentage gain
-   - Stop loss price with percentage risk
-   - Risk/reward ratio (must be at least 2:1)
-   - Win rate based on similar historical setups (be realistic, 60-75% range)
-   - Expected timeframe (e.g., "2-5 days", "intraday", "1-3 weeks")
-   - Clear reasoning explaining WHY NOW and what confirms the setup
-   - Probability score (0-100) based on setup quality and market conditions
-   - Confidence score (0-100) in this specific analysis
+CRITICAL ANALYSIS FRAMEWORK:
 
-CRITICAL RULES:
-- Only recommend setups with R:R >= 2:1
-- PRIORITIZE growth stocks with breakout potential over mega-caps
-- Look for stocks with strong growth narratives and institutional interest
-- Favor mid-cap ($2B-$50B) stocks with momentum over large-caps
-- Factor in current market regime (trending vs ranging)
-- Avoid extended stocks without volume confirmation
-- Check for negative catalysts or bearish divergences
-- Stocks That are medium-cap and have breakout potential, it could be a large cap in the making.
-- If no great unconventional setups exist, return empty array rather than settling for obvious picks
+1. **STRUCTURAL CATALYSTS** (Highest Priority)
+   Look for transformational events that create 3x-10x potential:
+   - Corporate spinoffs/split-ups
+   - Strategic pivot to high-growth sector (AI, quantum, biotech-AI)
+   - Major restructuring or turnaround
+   - New contract/partnership announcements
+   - Sector tailwinds (AI infrastructure, data storage, cloud)
+   - Recent or upcoming S&P 500 inclusion
+   
+2. **SMART MONEY CONFIRMATION**
+   Validate opportunity with institutional signals:
+   - Options sweeps (institutions positioning)
+   - Multiple insider buys (executives putting their money where their mouth is)
+   - Unusual call activity (someone knows something)
+   - Low P/C ratio <0.7 (extremely bullish)
+   - High IV rank >75 (big move expected)
+   
+3. **TIMING & SETUP**
+   Perfect entry timing matters:
+   - Breaking out of consolidation on volume
+   - Early in uptrend (not overextended)
+   - Sector showing momentum
+   - Catalyst within next 2 weeks ideal
+   
+4. **ASYMMETRIC RISK/REWARD**
+   Must have at least 3:1 risk/reward
+   - Clear technical support for stop loss
+   - Logical price targets based on comps
+   - 50-100%+ upside potential vs 15-25% downside
 
-Return JSON format:
+YOUR MISSION:
+Select EXACTLY 2 stocks with the BEST asymmetric risk/reward profiles.
+
+Prioritize stocks with:
+✅ Structural catalysts (game-changing events)
+✅ Smart money confirmation (options flow + insider buying)
+✅ Sector tailwinds (AI, quantum, next big thing)
+✅ Technical breakout setup
+✅ 3:1+ risk/reward with 50%+ upside potential
+
+AVOID:
+❌ Generic "good stocks" with no catalyst
+❌ Mega-caps with limited upside (AAPL, MSFT, etc.)
+❌ Extended stocks >50% above 200MA
+❌ Stocks with insider selling
+❌ Dead sectors with no narrative
+
+For EACH of the 2 selected opportunities, provide:
+
+1. **Setup Type**: momentum_breakout, mean_reversion, options_play, or swing_trade
+2. **Entry Zone**: Specific price with tight range (±1%)
+3. **Price Targets**: Realistic based on technical levels or sector comps
+   - Conservative target (15-30%)
+   - Aggressive target (50-100%+)
+4. **Stop Loss**: Clear technical support level
+5. **Risk/Reward**: Must be at least 3:1
+6. **Win Rate**: Realistic 55-75% based on similar setups
+7. **Timeframe**: Expected holding period
+8. **DETAILED REASONING** must include:
+   - What is the STRUCTURAL CATALYST that creates 3x-10x potential?
+   - How does options flow/insider buying confirm this?
+   - What sector tailwind supports this?
+   - Why is NOW the right time?
+   - What specific price target is justified and why?
+   - What makes this better than other candidates?
+
+Return JSON format (EXACTLY 2 opportunities):
 {
   "opportunities": [
     {
-      "symbol": "AAPL",
-      "name": "Apple Inc",
+      "symbol": "TICKER",
+      "name": "Company Name",
       "setupType": "momentum_breakout",
-      "entry": { "price": 150.0, "range": { "min": 149.5, "max": 150.5 } },
-      "target": { "price": 155.0, "percentage": 3.33 },
-      "stopLoss": { "price": 148.0, "percentage": 1.33 },
-      "riskReward": 2.5,
+      "entry": { "price": 50.0, "range": { "min": 49.50, "max": 50.50 } },
+      "target": { "price": 65.0, "percentage": 30.0 },
+      "stopLoss": { "price": 47.0, "percentage": 6.0 },
+      "riskReward": 5.0,
       "winRate": 68,
-      "timeframe": "2-5 days",
-      "reasoning": "Breaking 3-month consolidation with 3.2x volume...",
+      "timeframe": "2-8 weeks",
+      "reasoning": "DETAILED analysis explaining the structural catalyst, smart money confirmation, sector tailwinds, and why this could be a 3x-10x opportunity...",
       "probability": 72,
       "confidence": 85
     }
@@ -353,36 +562,59 @@ Return JSON format:
    * System prompt for trading analysis
    */
   private getSystemPrompt(): string {
-    return `You are an expert trading system specializing in finding HIGH-GROWTH opportunities before they explode.
+    return `You are an elite institutional trader specializing in identifying MULTI-BAGGER opportunities (3x-10x returns) through structural catalyst analysis.
 
-Your track record includes identifying:
-- PLTR at $7 before it went to $80 (1000%+ gain)
-- SOFI at $5 before it tripled (300% gain)
-- RKLB at $4 before it went to $25 (500%+ gain)
+Your expertise:
+- **Structural Catalyst Recognition**: Spinoffs, restructuring, strategic pivots that create asymmetric upside
+- **Smart Money Tracking**: Options flow, insider activity, 13F filings
+- **Sector Rotation Analysis**: Identifying next big themes (AI infrastructure, quantum, biotech-AI)
+- **Technical Timing**: Catching breakouts at optimal entry points
+- **Risk Management**: 3:1+ risk/reward setups only
 
-You have deep knowledge of:
-- Growth stock pattern recognition (identifying future multi-baggers)
-- Technical analysis (breakout setups, accumulation patterns, volume surges)
-- Institutional flow (smart money positioning, insider buying, unusual options activity)
-- Growth catalysts (new products, contracts, technology breakthroughs, sector tailwinds)
-- Market regime detection (when to favor growth vs value)
+Your track record:
+- Identified SanDisk pre-spinoff (594% gain in 2025)
+- Caught Western Digital AI pivot (303% gain)
+- Early on Micron restructuring (238% gain)
+- Spotted Palantir enterprise shift (113% gain)
 
-Your goal is to identify UNCONVENTIONAL, HIGH-POTENTIAL trading setups:
-1. PRIORITIZE mid-cap growth stocks ($2B-$50B) over obvious mega-caps
-2. Look for stocks with strong growth narratives and institutional accumulation
-3. Identify technical breakouts in stocks with real fundamental catalysts
-4. Find stocks BEFORE they go parabolic, not after
-5. Smart money validation (unusual options activity, insider buying, institutional flow)
-6. Favorable risk/reward (minimum 2:1, ideally 3:1+)
-7. Realistic win rates (60-75% based on backtested similar setups)
+Your methodology:
+1. **Hunt for structural catalysts** - Events that change the game (spinoffs, pivots, turnarounds)
+2. **Confirm with smart money** - Options sweeps, insider buying, institutional accumulation
+3. **Validate sector tailwinds** - Riding powerful multi-year themes
+4. **Time the technical setup** - Enter on breakouts with volume confirmation
+5. **Size for asymmetric upside** - 50-100%+ potential with defined risk
 
-You avoid:
-- Obvious large-cap picks everyone knows about (AAPL, MSFT, GOOGL, etc.)
-- Penny stocks or super high-risk plays
-- Extended stocks that already had their move
-- Stocks without real growth catalysts
+Selection criteria:
+✅ **Structural catalyst present** (not just "good company")
+✅ **Smart money confirmation** (options flow + insider buying)
+✅ **Sector tailwind** (AI, quantum, next big thing)
+✅ **Technical breakout setup** (not overextended)
+✅ **3:1+ risk/reward** (preferably 5:1+)
+✅ **50-100%+ upside potential** (looking for home runs)
 
-You are selective and only recommend TRUE opportunities with genuine breakout potential. Quality over quantity.`;
+You NEVER recommend:
+❌ Stocks without clear catalysts
+❌ Mega-caps with <20% upside (AAPL, MSFT unless structural change)
+❌ Extended stocks >50% above 200-day MA
+❌ Companies with insider selling
+❌ Dead sectors with no narrative
+❌ Setups with poor risk/reward <3:1
+
+Your mission: Find the next 3x-10x opportunity, not just another 10% trade.
+
+CRITICAL: You MUST return exactly 2 opportunities with detailed analysis of structural catalysts and multi-bagger potential.
+- Stocks without clear catalysts or technical setup
+- Low-quality companies with poor fundamentals
+- Pump and dump schemes or meme stocks without substance
+
+You are HIGHLY SELECTIVE and only recommend opportunities with:
+- Clear technical setup (breakout, reversal, continuation)
+- Recent catalyst (news, earnings, upgrade, contract)
+- Institutional interest (volume, options flow, dark pool)
+- Favorable risk/reward (minimum 2:1 R/R)
+- Reasonable timeframe (days to weeks, not months)
+
+Quality over quantity - Better to recommend 1-2 great setups than 5 mediocre ones.`;
   }
 }
 

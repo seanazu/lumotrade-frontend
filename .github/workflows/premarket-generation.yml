@@ -1,0 +1,43 @@
+name: Pre-Market Content Generation
+
+on:
+  schedule:
+    # Run at 8:00 AM ET (13:00 UTC during EDT, 14:00 UTC during EST)
+    # Adjust based on daylight saving time
+    - cron: '0 13 * * 1-5'  # EDT (Mar-Nov)
+    # - cron: '0 14 * * 1-5'  # EST (Nov-Mar) - uncomment for winter
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Pre-Market Generation
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.APP_URL }}/api/cron/premarket-generation")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "Response (HTTP $http_code):"
+          echo "$body"
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 207 ]; then
+            echo "✅ Pre-market generation completed"
+            exit 0
+          else
+            echo "❌ Pre-market generation failed"
+            exit 1
+          fi
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "Pre-market generation failed. Check logs."
+          # Add notification logic here (e.g., Slack, email, etc.)
+

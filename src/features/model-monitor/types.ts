@@ -44,6 +44,7 @@ export interface Prediction {
   direction: "UP" | "DOWN";
   confidence: number;
   q50: number;
+  actual_return: number | null;
   was_correct: boolean | null;
 }
 

@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/design-system/atoms/Skeleton';
+import { Skeleton } from "@/components/design-system/atoms/Skeleton";
 
 export default function Loading() {
   return (
@@ -18,4 +18,3 @@ export default function Loading() {
     </div>
   );
 }
-

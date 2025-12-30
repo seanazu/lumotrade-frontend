@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import {
   useModelAccuracyStats,
@@ -20,7 +21,36 @@ import type { TabId } from "../types";
  * Manages state and data fetching for all tabs
  */
 export function ModelMonitorContainer() {
-  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get initial tab from URL, default to "dashboard"
+  const getTabFromUrl = (): TabId => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "predictions" || tabParam === "trades" || tabParam === "dashboard") {
+      return tabParam;
+    }
+    return "dashboard";
+  };
+
+  const [activeTab, setActiveTab] = useState<TabId>(getTabFromUrl());
+
+  // Update URL when tab changes
+  const handleTabChange = (newTab: TabId) => {
+    setActiveTab(newTab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", newTab);
+    router.push(`/model-monitor?${params.toString()}`, { scroll: false });
+  };
+
+  // Sync state with URL changes (e.g., browser back/forward)
+  useEffect(() => {
+    const urlTab = getTabFromUrl();
+    if (urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const [tradesPage, setTradesPage] = useState(1);
   const [predictionsPage, setPredictionsPage] = useState(1);
   const [predictionsPageSize, setPredictionsPageSize] = useState(50);
@@ -43,7 +73,7 @@ export function ModelMonitorContainer() {
   const { data: statusData } = useTradingStatus();
 
   const { data: historyData, isLoading: historyLoading } = usePredictionHistory(
-    30,
+    90, // Changed from 14 to 90 days (3 months)
     predictionsPage,
     predictionsPageSize,
     predSearch,
@@ -53,7 +83,7 @@ export function ModelMonitorContainer() {
   );
 
   const { data: tradesData, isLoading: tradesLoading } = useTrades(
-    30,
+    90, // Changed from 14 to 90 days (3 months)
     tradesPage,
     tradesPageSize,
     tradeSearch,
@@ -61,15 +91,26 @@ export function ModelMonitorContainer() {
     tradeDirection
   );
 
+  // Fetch full stats for dashboard (300 days to get all trades)
+  const { data: fullStatsData } = useTrades(
+    300,
+    1,
+    1,
+    "",
+    "all",
+    "all"
+  );
+
   const predictions = historyData?.predictions || [];
   const trades = tradesData?.trades || [];
   const stats = tradesData?.stats;
+  const fullStats = fullStatsData?.stats; // Full period stats for dashboard
   const predictionsPagination = historyData?.pagination;
   const tradesPagination = tradesData?.pagination;
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader activeTab={activeTab} onTabChange={setActiveTab} />
+      <DashboardHeader activeTab={activeTab} onTabChange={handleTabChange} />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <AnimatePresence mode="wait">
@@ -78,7 +119,7 @@ export function ModelMonitorContainer() {
               accuracyStats={accuracyStats}
               accuracyLoading={accuracyLoading}
               statusData={statusData}
-              tradingStats={stats}
+              tradingStats={fullStats || stats}
             />
           )}
 

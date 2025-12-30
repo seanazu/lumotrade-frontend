@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/design-system/atoms/Button';
+import { useEffect } from "react";
+import { Button } from "@/components/design-system/atoms/Button";
 
 export default function Error({
   error,
@@ -11,7 +11,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Settings error:', error);
+    console.error("Settings error:", error);
   }, [error]);
 
   return (
@@ -24,4 +24,3 @@ export default function Error({
     </div>
   );
 }
-

@@ -37,6 +37,9 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
                 Expected (p50)
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                Actual Return
+              </th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground">
                 Result
               </th>
             </tr>
@@ -104,13 +107,30 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
                       )}
                     </td>
                     <td className="px-4 py-3">
+                      {pred.actual_return !== null &&
+                      pred.actual_return !== undefined &&
+                      !isNaN(pred.actual_return) ? (
+                        <span
+                          className={cn(
+                            "text-xs font-mono font-semibold",
+                            pred.actual_return > 0 ? "text-up" : "text-down"
+                          )}
+                        >
+                          {pred.actual_return > 0 ? "+" : ""}
+                          {(pred.actual_return * 100).toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Pending</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       {pred.was_correct === null ||
                       pred.was_correct === undefined ? (
                         <span className="text-xs text-muted-foreground">—</span>
                       ) : pred.was_correct === true ? (
-                        <CheckCircle2 className="h-4 w-4 text-up" />
+                        <CheckCircle2 className="h-4 w-4 text-up inline" />
                       ) : (
-                        <XCircle className="h-4 w-4 text-down" />
+                        <XCircle className="h-4 w-4 text-down inline" />
                       )}
                     </td>
                   </motion.tr>
@@ -118,7 +138,7 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
               })
             ) : (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center">
+                <td colSpan={7} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <Target className="h-8 w-8 text-muted-foreground/20" />
                     <p className="text-sm text-muted-foreground">No predictions yet</p>

@@ -7,6 +7,7 @@
 export const POLYGON_API_KEY = process.env.POLYGON_API_KEY || '';
 export const MARKETAUX_API_KEY = process.env.MARKETAUX_API_KEY || '';
 export const FMP_API_KEY = process.env.FMP_API_KEY || '';
+export const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 export const ORATS_API_KEY = process.env.ORATS_API_KEY || '';
@@ -26,6 +27,7 @@ export const PGPASSWORD = process.env.PGPASSWORD || '';
 
 // InstantDB
 export const INSTANT_APP_ID = process.env.NEXT_PUBLIC_INSTANT_APP_ID || '';
+export const INSTANT_ADMIN_TOKEN = process.env.NEXT_PUBLIC_INSTANT_ADMIN_KEY || process.env.INSTANT_ADMIN_TOKEN || '';
 
 // Feature Flags
 export const NODE_ENV = process.env.NODE_ENV || 'development';

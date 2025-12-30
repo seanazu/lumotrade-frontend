@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 export interface TradingOpportunity {
   symbol: string;
   name: string;
-  setupType:
+  setupType?:
     | "momentum_breakout"
     | "mean_reversion"
     | "options_play"

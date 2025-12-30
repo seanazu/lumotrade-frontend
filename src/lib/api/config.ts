@@ -7,6 +7,8 @@ import {
   POLYGON_API_KEY,
   MARKETAUX_API_KEY,
   FMP_API_KEY,
+  FINNHUB_API_KEY,
+  ORATS_API_KEY,
   IS_DEVELOPMENT,
 } from '@/lib/env';
 
@@ -29,6 +31,10 @@ interface ApiConfig {
     baseUrl: string;
   };
   eodhd: {
+    apiKey: string;
+    baseUrl: string;
+  };
+  orats: {
     apiKey: string;
     baseUrl: string;
   };
@@ -66,12 +72,16 @@ export const apiConfig: ApiConfig = {
     baseUrl: 'https://financialmodelingprep.com/api/v3',
   },
   finnhub: {
-    apiKey: validateEnvVar('FINNHUB_API_KEY', process.env.FINNHUB_API_KEY),
+    apiKey: validateEnvVar('FINNHUB_API_KEY', FINNHUB_API_KEY),
     baseUrl: 'https://finnhub.io/api/v1',
   },
   eodhd: {
     apiKey: validateEnvVar('EODHD_API_KEY', process.env.EODHD_API_KEY, true), // Optional API
     baseUrl: 'https://eodhistoricaldata.com/api',
+  },
+  orats: {
+    apiKey: validateEnvVar('ORATS_API_KEY', ORATS_API_KEY, true), // Optional but recommended
+    baseUrl: 'https://api.orats.io',
   },
 };
 
@@ -81,4 +91,5 @@ export const isMarketauxConfigured = (): boolean => !!apiConfig.marketaux.apiKey
 export const isFMPConfigured = (): boolean => !!apiConfig.fmp.apiKey;
 export const isFinnhubConfigured = (): boolean => !!apiConfig.finnhub.apiKey;
 export const isEODHDConfigured = (): boolean => !!apiConfig.eodhd.apiKey;
+export const isOratsConfigured = (): boolean => !!apiConfig.orats.apiKey;
 
