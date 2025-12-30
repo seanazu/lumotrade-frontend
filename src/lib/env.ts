@@ -66,14 +66,19 @@ export const ML_API_TIMEOUT = parseInt(
 /**
  * Validates that required environment variables are set
  * @throws Error if required variables are missing
- * 
+ *
  * NOTE: Only validates at runtime, not during build process
  * API keys are only needed when API routes are called, not during build
  */
 export function validateEnv() {
   // Skip validation during build process
-  if (process.env.VERCEL_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
-    console.log('⏭️  Skipping env validation during build (runtime validation will occur)');
+  if (
+    process.env.VERCEL_ENV === "production" &&
+    process.env.NEXT_PHASE === "phase-production-build"
+  ) {
+    console.log(
+      "⏭️  Skipping env validation during build (runtime validation will occur)"
+    );
     return;
   }
 

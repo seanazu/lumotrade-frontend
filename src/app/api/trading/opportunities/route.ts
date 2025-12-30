@@ -19,10 +19,21 @@ const STALE_WHILE_REVALIDATE = 1800; // 30 minutes
  * Cached for 15 minutes for optimal performance
  */
 export async function GET(request: NextRequest) {
+  console.log("🚀 Trading opportunities API called");
+  
   try {
+    // Log environment variables status (without exposing values)
+    console.log("Environment check:", {
+      hasPolygon: !!process.env.POLYGON_API_KEY,
+      hasFMP: !!process.env.FMP_API_KEY,
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      hasMarketaux: !!process.env.MARKETAUX_API_KEY,
+    });
+    
     const searchParams = request.nextUrl.searchParams;
     const forceRefresh = searchParams.get("refresh") === "1";
     const dateEt = getEtDateString(new Date());
+    console.log("📅 Trading date:", dateEt);
 
     const cacheKey = "trading:opportunities:v1";
 
@@ -135,9 +146,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in trading opportunities endpoint:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    console.error("Error message:", error instanceof Error ? error.message : String(error));
+    
     return NextResponse.json(
       {
         error: "Failed to analyze trading opportunities",
+        details: error instanceof Error ? error.message : String(error),
         opportunities: [],
         marketContext: null,
       },
