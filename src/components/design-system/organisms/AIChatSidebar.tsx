@@ -71,10 +71,12 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })).concat([{ role: userMessage.role, content: userMessage.content }]),
+          messages: messages
+            .map((m) => ({
+              role: m.role,
+              content: m.content,
+            }))
+            .concat([{ role: userMessage.role, content: userMessage.content }]),
           currentSymbol,
           currentPage: pathname,
         }),
@@ -118,81 +120,84 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-            style={{ zIndex: 9998 }}
-          />
-
-          {/* Sidebar - Exact Figma Design - Fixed to right side, full height */}
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 w-[384px] h-screen flex flex-col"
+        /* Sidebar - Fixed to right side, pushes content */
+        <motion.aside
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="fixed top-12 right-0 w-[384px] flex flex-col"
+          style={{
+            height: "calc(100vh - 48px)", // Full height minus TopBar (48px / h-12)
+            background: "rgba(11, 11, 12, 0.9)",
+            borderLeft: "1px solid #27272a",
+            boxShadow: "0px 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            zIndex: 40,
+          }}
+        >
+          {/* Header - 89px height */}
+          <div
+            className="flex-shrink-0 h-[89px] flex items-center"
             style={{
-              background: "rgba(11, 11, 12, 0.9)",
-              borderLeft: "1px solid #27272a",
-              boxShadow: "0px 25px 50px -12px rgba(0, 0, 0, 0.25)",
-              zIndex: 9999,
+              borderBottom: "1px solid #27272a",
+              paddingLeft: "24px",
+              paddingRight: "24px",
             }}
           >
-            {/* Header - 89px height */}
+            {/* AI Icon with gradient and shadow */}
             <div
-              className="flex-shrink-0 h-[89px] flex items-center"
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
               style={{
-                borderBottom: "1px solid #27272a",
-                paddingLeft: "24px",
-                paddingRight: "24px",
+                background:
+                  "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
+                boxShadow: "0px 0px 20px -5px rgba(99, 102, 241, 0.4)",
               }}
             >
-              {/* AI Icon with gradient and shadow */}
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{
-                  background:
-                    "linear-gradient(45deg, rgb(99, 102, 241), rgb(168, 85, 247))",
-                  boxShadow: "0px 0px 20px -5px rgba(99, 102, 241, 0.4)",
-                }}
-              >
-                <Sparkles className="w-[18px] h-[22px] text-white" style={{ transform: "scaleY(-1)" }} />
-              </div>
-
-              {/* Title */}
-              <h3
-                className="ml-3 font-bold text-[18px] leading-[28px] flex-shrink-0"
-                style={{ color: "#f4f4f5", fontFamily: "Manrope, sans-serif" }}
-              >
-                Lumo AI
-              </h3>
-
-              {/* Spacer */}
-              <div className="flex-1" />
-
-              {/* Close Button */}
-              <button
-                onClick={onClose}
-                className="w-10 h-10 rounded-full hover:bg-[#27272a] flex items-center justify-center transition-colors flex-shrink-0"
-                style={{ color: "#a1a1aa" }}
-                aria-label="Close AI Chat"
-              >
-                <X className="w-6 h-6" style={{ transform: "scaleY(-1)" }} />
-              </button>
+              <Sparkles
+                className="w-[18px] h-[22px] text-white"
+                style={{ transform: "scaleY(-1)" }}
+              />
             </div>
 
+            {/* Title */}
+            <h3
+              className="ml-3 font-bold text-[18px] leading-[28px] flex-shrink-0"
+              style={{ color: "#f4f4f5", fontFamily: "Manrope, sans-serif" }}
+            >
+              Lumo AI
+            </h3>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full hover:bg-[#27272a] flex items-center justify-center transition-colors flex-shrink-0"
+              style={{ color: "#a1a1aa" }}
+              aria-label="Close AI Chat"
+            >
+              <X className="w-6 h-6" style={{ transform: "scaleY(-1)" }} />
+            </button>
+          </div>
+
             {/* Messages Container - Scrollable - Fills remaining space */}
-            <div className="flex-1 overflow-y-auto" style={{ paddingLeft: "24px", paddingRight: "24px", paddingTop: "24px", paddingBottom: "24px" }}>
+            <div
+              className="flex-1 overflow-y-auto"
+              style={{
+                paddingLeft: "24px",
+                paddingRight: "24px",
+                paddingTop: "24px",
+                paddingBottom: "24px",
+              }}
+            >
               <div className="space-y-6">
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={message.role === "user" ? "flex justify-end" : ""}
+                    className={
+                      message.role === "user" ? "flex justify-end" : ""
+                    }
                   >
                     {message.role === "assistant" && (
                       <div className="flex items-start gap-3">
@@ -206,7 +211,10 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
                         >
                           <span
                             className="text-[10px] font-normal"
-                            style={{ color: "#ffffff", fontFamily: "Manrope, sans-serif" }}
+                            style={{
+                              color: "#ffffff",
+                              fontFamily: "Manrope, sans-serif",
+                            }}
                           >
                             AI
                           </span>
@@ -221,7 +229,10 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
                         >
                           <p
                             className="text-[14px] leading-[22.75px] whitespace-pre-wrap font-normal"
-                            style={{ color: "#d4d4d8", fontFamily: "Manrope, sans-serif" }}
+                            style={{
+                              color: "#d4d4d8",
+                              fontFamily: "Manrope, sans-serif",
+                            }}
                           >
                             {message.content}
                           </p>
@@ -240,7 +251,10 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
                         >
                           <p
                             className="text-[14px] leading-[20px] font-medium"
-                            style={{ color: "#6366f1", fontFamily: "Manrope, sans-serif" }}
+                            style={{
+                              color: "#6366f1",
+                              fontFamily: "Manrope, sans-serif",
+                            }}
                           >
                             {message.content}
                           </p>
@@ -269,7 +283,10 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
                     >
                       <span
                         className="text-[10px] font-normal"
-                        style={{ color: "#ffffff", fontFamily: "Manrope, sans-serif" }}
+                        style={{
+                          color: "#ffffff",
+                          fontFamily: "Manrope, sans-serif",
+                        }}
                       >
                         AI
                       </span>
@@ -352,7 +369,6 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
               </div>
             </div>
           </motion.aside>
-        </>
       )}
     </AnimatePresence>
   );
