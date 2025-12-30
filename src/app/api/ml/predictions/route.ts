@@ -24,6 +24,9 @@ export async function GET(request: NextRequest) {
       mlUrl.searchParams.append(key, value);
     });
 
+    console.log('[ML Predictions Proxy] Request URL:', request.url);
+    console.log('[ML Predictions Proxy] Forwarding to ML backend:', mlUrl.toString());
+
     const response = await fetch(mlUrl.toString(), {
       headers: {
         "X-API-Key": ML_API_KEY,
@@ -41,6 +44,11 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    console.log('[ML Predictions Proxy] Received', data.predictions?.length || 0, 'predictions');
+    if (data.predictions && data.predictions.length > 0) {
+      const dates = [...new Set(data.predictions.map((p: any) => p.date))].sort().reverse();
+      console.log('[ML Predictions Proxy] Dates in response:', dates.slice(0, 5));
+    }
     
     return NextResponse.json(data, {
       headers: {
