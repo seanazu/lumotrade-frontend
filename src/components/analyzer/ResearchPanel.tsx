@@ -42,14 +42,14 @@ export function ResearchPanel({
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       {/* Tabs */}
-      <div className="border-b border-border bg-muted/20">
-        <div className="flex gap-1 p-2">
+      <div className="border-b border-border bg-muted/20 overflow-x-auto">
+        <div className="flex gap-0.5 sm:gap-1 p-1.5 sm:p-2 min-w-max">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                "px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap",
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -62,7 +62,7 @@ export function ResearchPanel({
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         {activeTab === "overview" && <OverviewTab research={research} />}
         {activeTab === "fundamentals" && (
           <FundamentalsTab research={research} />
@@ -70,14 +70,14 @@ export function ResearchPanel({
         {activeTab === "technicals" && <TechnicalsTab research={research} />}
         {activeTab === "sentiment" && <SentimentTab research={research} />}
         {activeTab === "strategies" && (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {selectedStrategyId && (
-              <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-3 flex items-center justify-between">
+              <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <div className="text-sm font-semibold text-foreground mb-0.5">
+                  <div className="text-xs sm:text-sm font-semibold text-foreground mb-0.5">
                     Strategy Selected
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">
                     Click &ldquo;Save Strategy&rdquo; to apply this setup to
                     your Trade Setup card
                   </div>
@@ -92,7 +92,7 @@ export function ResearchPanel({
                     }
                   }}
                   disabled={isSaving}
-                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-500/50 text-white rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-500/50 text-white rounded-lg text-xs sm:text-sm font-semibold transition-colors disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {isSaving ? "Saving..." : "Save Strategy"}
                 </button>
@@ -337,9 +337,9 @@ function OverviewTab({ research }: { research: ComprehensiveResearch }) {
 
       {/* Upcoming Catalysts */}
       {research.catalysts && research.catalysts.length > 0 && (
-        <div className="bg-card/30 border border-border/50 rounded-lg p-3">
-          <h4 className="font-semibold text-xs mb-2">Upcoming Catalysts</h4>
-          <div className="grid grid-cols-2 gap-1.5">
+        <div className="bg-card/30 border border-border/50 rounded-lg p-2.5 sm:p-3">
+          <h4 className="font-semibold text-xs sm:text-sm mb-1.5 sm:mb-2">Upcoming Catalysts</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {research.catalysts.slice(0, 6).map((catalyst, i) => (
               <div
                 key={i}
@@ -380,8 +380,8 @@ function FundamentalsTab({ research }: { research: ComprehensiveResearch }) {
   const fund = research.scores.fundamental;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <MetricCard
           label="Profitability"
           score={fund.components.profitability}
@@ -394,16 +394,16 @@ function FundamentalsTab({ research }: { research: ComprehensiveResearch }) {
         />
       </div>
 
-      <div className="bg-muted/30 rounded-lg p-4">
-        <h4 className="font-semibold text-sm mb-2">Interpretation</h4>
-        <p className="text-sm text-muted-foreground">{fund.interpretation}</p>
+      <div className="bg-muted/30 rounded-lg p-3 sm:p-4">
+        <h4 className="font-semibold text-xs sm:text-sm mb-1.5 sm:mb-2">Interpretation</h4>
+        <p className="text-xs sm:text-sm text-muted-foreground">{fund.interpretation}</p>
       </div>
 
       {/* Financial Details */}
       {research.financials && research.financials.ratios && (
         <div>
-          <h4 className="font-semibold text-sm mb-3">Key Metrics</h4>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Key Metrics</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {research.financials.ratios.peRatio && (
               <StatBox
                 label="P/E Ratio"
@@ -452,18 +452,18 @@ function TechnicalsTab({ research }: { research: ComprehensiveResearch }) {
   const tech = research.technicals;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-muted/30 rounded-lg p-4">
-        <h4 className="font-semibold text-sm mb-2">Technical Summary</h4>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-muted/30 rounded-lg p-3 sm:p-4">
+        <h4 className="font-semibold text-xs sm:text-sm mb-1.5 sm:mb-2">Technical Summary</h4>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           {research.scores.technical.interpretation}
         </p>
       </div>
 
       {/* Indicators Grid */}
       <div>
-        <h4 className="font-semibold text-sm mb-3">Key Indicators</h4>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Key Indicators</h4>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
           <IndicatorCard
             label="RSI (14)"
             value={tech.rsi.toFixed(1)}
@@ -495,8 +495,8 @@ function TechnicalsTab({ research }: { research: ComprehensiveResearch }) {
 
       {/* Moving Averages */}
       <div>
-        <h4 className="font-semibold text-sm mb-3">Moving Averages</h4>
-        <div className="space-y-2">
+        <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Moving Averages</h4>
+        <div className="space-y-1.5 sm:space-y-2">
           {[
             { label: "SMA 20", value: tech.sma20, color: "#60a5fa" },
             { label: "SMA 50", value: tech.sma50, color: "#f59e0b" },
@@ -543,16 +543,16 @@ function SentimentTab({ research }: { research: ComprehensiveResearch }) {
   const sent = research.sentiment;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Sentiment Gauge */}
       <div className="flex justify-center">
         <div className="text-center">
-          <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">
+          <div className="text-[10px] sm:text-xs text-muted-foreground mb-1.5 sm:mb-2 uppercase tracking-wide">
             Composite Sentiment
           </div>
           <div
             className={cn(
-              "text-6xl font-bold mb-2",
+              "text-4xl sm:text-6xl font-bold mb-1.5 sm:mb-2",
               sent.score >= 70
                 ? "text-emerald-400"
                 : sent.score >= 55
@@ -566,12 +566,12 @@ function SentimentTab({ research }: { research: ComprehensiveResearch }) {
           >
             {sent.score}
           </div>
-          <div className="text-sm text-muted-foreground mb-1">
+          <div className="text-xs sm:text-sm text-muted-foreground mb-1">
             {sent.label.replace("_", " ").toUpperCase()}
           </div>
           <div
             className={cn(
-              "text-xs font-semibold px-3 py-1 rounded-full inline-block",
+              "text-[10px] sm:text-xs font-semibold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full inline-block",
               sent.momentum === "positive" &&
                 "bg-emerald-500/20 text-emerald-300",
               sent.momentum === "neutral" && "bg-amber-500/20 text-amber-300",
@@ -584,14 +584,14 @@ function SentimentTab({ research }: { research: ComprehensiveResearch }) {
       </div>
 
       {/* Interpretation */}
-      <div className="bg-muted/30 rounded-lg p-4">
-        <p className="text-sm text-muted-foreground">{sent.interpretation}</p>
+      <div className="bg-muted/30 rounded-lg p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground">{sent.interpretation}</p>
       </div>
 
       {/* Component Breakdown */}
       <div>
-        <h4 className="font-semibold text-sm mb-3">Sentiment Sources</h4>
-        <div className="space-y-2">
+        <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Sentiment Sources</h4>
+        <div className="space-y-1.5 sm:space-y-2">
           {Object.entries(sent.components).map(
             ([source, data]: [string, any]) => (
               <div
@@ -635,14 +635,14 @@ function RiskTab({ research }: { research: ComprehensiveResearch }) {
   const nearTerm = catalysts.filter((c) => c.daysUntil <= 14);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Catalyst Warnings */}
       {nearTerm.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-          <h4 className="font-semibold text-sm text-amber-300 mb-3">
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 sm:p-4">
+          <h4 className="font-semibold text-xs sm:text-sm text-amber-300 mb-2 sm:mb-3">
             ⚠️ Near-Term Catalysts ({nearTerm.length})
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             {nearTerm.map((catalyst, i) => (
               <div key={i} className="text-xs text-muted-foreground">
                 <span className="font-semibold">{catalyst.event}</span> in{" "}
@@ -657,8 +657,8 @@ function RiskTab({ research }: { research: ComprehensiveResearch }) {
 
       {/* Volatility Metrics */}
       <div>
-        <h4 className="font-semibold text-sm mb-3">Volatility Metrics</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Volatility Metrics</h4>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <StatBox
             label="ATR"
             value={`${research.technicals.atrPercent.toFixed(2)}%`}
@@ -671,13 +671,13 @@ function RiskTab({ research }: { research: ComprehensiveResearch }) {
       </div>
 
       {/* Position Sizing Guidance */}
-      <div className="bg-muted/30 rounded-lg p-4">
-        <h4 className="font-semibold text-sm mb-3">Position Sizing Guidance</h4>
-        <p className="text-xs text-muted-foreground mb-3">
+      <div className="bg-muted/30 rounded-lg p-3 sm:p-4">
+        <h4 className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Position Sizing Guidance</h4>
+        <p className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-3">
           Based on {research.marketContext.regime.volatilityLevel} volatility
           regime
         </p>
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           {research.marketContext.regime.strategySuggestions.map(
             (suggestion: string, i: number) => (
               <div key={i} className="text-xs text-muted-foreground flex">

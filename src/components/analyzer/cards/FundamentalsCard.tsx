@@ -24,11 +24,11 @@ interface FundamentalsCardProps {
  */
 export const FundamentalsCard = memo(function FundamentalsCard({ quote, riskProfile }: FundamentalsCardProps) {
   return (
-    <div className="w-64 bg-background rounded-lg border border-border p-4 flex-shrink-0">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-5 h-5 rounded bg-indigo-500/10 flex items-center justify-center">
+    <div className="w-56 sm:w-64 bg-background rounded-lg border border-border p-3 sm:p-4 flex-shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+        <div className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
           <svg
-            className="w-3 h-3 text-indigo-500"
+            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -41,33 +41,33 @@ export const FundamentalsCard = memo(function FundamentalsCard({ quote, riskProf
             />
           </svg>
         </div>
-        <h3 className="font-semibold text-xs">Fundamentals</h3>
+        <h3 className="font-semibold text-[11px] sm:text-xs">Fundamentals</h3>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">Mkt Cap</div>
-          <div className="text-sm font-bold">
+          <div className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Mkt Cap</div>
+          <div className="text-xs sm:text-sm font-bold">
             {quote.marketCap ? `$${(quote.marketCap / 1e9).toFixed(1)}B` : "N/A"}
           </div>
           {quote.pe && (
-            <div className="text-[9px] text-muted-foreground">
+            <div className="text-[8px] sm:text-[9px] text-muted-foreground">
               P/E: {quote.pe.toFixed(1)}
             </div>
           )}
         </div>
         <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">EPS</div>
-          <div className="text-sm font-bold">
+          <div className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">EPS</div>
+          <div className="text-xs sm:text-sm font-bold">
             {quote.eps ? `$${quote.eps.toFixed(2)}` : "N/A"}
           </div>
         </div>
         <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">Volume</div>
-          <div className="text-sm font-bold">{(quote.volume / 1e6).toFixed(1)}M</div>
+          <div className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Volume</div>
+          <div className="text-xs sm:text-sm font-bold">{(quote.volume / 1e6).toFixed(1)}M</div>
         </div>
         <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">52W Range</div>
-          <div className="text-[9px] font-bold">
+          <div className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">52W Range</div>
+          <div className="text-[8px] sm:text-[9px] font-bold">
             {riskProfile.distance52WeekLow !== undefined
               ? `${riskProfile.distance52WeekLow.toFixed(0)}% from low`
               : "N/A"}

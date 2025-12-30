@@ -20,11 +20,11 @@ interface RiskProfileCardProps {
  */
 export const RiskProfileCard = memo(function RiskProfileCard({ riskProfile }: RiskProfileCardProps) {
   return (
-    <div className="w-64 bg-background rounded-lg border border-border p-4 flex-shrink-0">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-5 h-5 rounded bg-amber-500/10 flex items-center justify-center">
+    <div className="w-56 sm:w-64 bg-background rounded-lg border border-border p-3 sm:p-4 flex-shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+        <div className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-amber-500/10 flex items-center justify-center flex-shrink-0">
           <svg
-            className="w-3 h-3 text-amber-500"
+            className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -37,10 +37,10 @@ export const RiskProfileCard = memo(function RiskProfileCard({ riskProfile }: Ri
             />
           </svg>
         </div>
-        <h3 className="font-semibold text-xs">Risk Profile</h3>
+        <h3 className="font-semibold text-[11px] sm:text-xs">Risk Profile</h3>
         <span
           className={cn(
-            "ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+            "ml-auto px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase whitespace-nowrap",
             riskProfile.volatility === "HIGH" && "bg-red-500/10 text-red-500",
             riskProfile.volatility === "MEDIUM" && "bg-amber-500/10 text-amber-500",
             riskProfile.volatility === "LOW" && "bg-emerald-500/10 text-emerald-500"
@@ -49,15 +49,15 @@ export const RiskProfileCard = memo(function RiskProfileCard({ riskProfile }: Ri
           {riskProfile.volatility || "Medium"}
         </span>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between mb-0.5 sm:mb-1">
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground">
               Volatility {riskProfile.beta ? `(Beta ${riskProfile.beta.toFixed(2)})` : ""}
             </span>
             <span
               className={cn(
-                "text-[10px] font-bold",
+                "text-[9px] sm:text-[10px] font-bold",
                 riskProfile.volatility === "HIGH" && "text-red-500",
                 riskProfile.volatility === "MEDIUM" && "text-amber-500",
                 riskProfile.volatility === "LOW" && "text-emerald-500"
@@ -79,9 +79,9 @@ export const RiskProfileCard = memo(function RiskProfileCard({ riskProfile }: Ri
         </div>
         {riskProfile.shortInterest !== undefined && (
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted-foreground">Short Interest</span>
-              <span className="text-[10px] font-bold text-emerald-500">
+            <div className="flex items-center justify-between mb-0.5 sm:mb-1">
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground">Short Interest</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-emerald-500">
                 {riskProfile.shortInterest.toFixed(1)}%
               </span>
             </div>

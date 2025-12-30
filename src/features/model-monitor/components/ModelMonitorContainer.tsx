@@ -73,7 +73,7 @@ export function ModelMonitorContainer() {
   const { data: statusData } = useTradingStatus();
 
   const { data: historyData, isLoading: historyLoading } = usePredictionHistory(
-    1, // Use 1 day to reliably include today (temporary until SQL issue is fully debugged)
+    90, // Fetch 90 days of history (3 months)
     predictionsPage,
     predictionsPageSize,
     predSearch,
@@ -83,7 +83,7 @@ export function ModelMonitorContainer() {
   );
 
   const { data: tradesData, isLoading: tradesLoading } = useTrades(
-    0, // Use 0 to include all trades (timezone-safe)
+    90, // Fetch 90 days of trades (3 months)
     tradesPage,
     tradesPageSize,
     tradeSearch,
