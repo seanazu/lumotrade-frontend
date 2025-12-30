@@ -574,7 +574,8 @@ export function usePredictionHistory(
 ) {
   return useQuery({
     queryKey: [
-      ...mlQueryKeys.prediction,
+      "ml",
+      "prediction",
       "history",
       days,
       page,
