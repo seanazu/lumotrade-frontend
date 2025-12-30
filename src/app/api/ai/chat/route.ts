@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
         ...messages,
       ],
       temperature: 0.7,
-      max_tokens: 800,
+      // Note: gpt-5.2 doesn't support max_tokens parameter
     });
 
     const response = completion.choices[0]?.message?.content;
