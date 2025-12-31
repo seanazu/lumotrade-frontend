@@ -48,6 +48,8 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
             {predictions.length > 0 ? (
               predictions.map((pred, i) => {
                 const isUp = pred.direction === "UP";
+                const isDown = pred.direction === "DOWN";
+                const isHold = pred.direction === "HOLD";
                 const confidence = Math.round(pred.confidence * 100);
 
                 return (
@@ -68,8 +70,8 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
                     </td>
                     <td className="px-4 py-3">
                       <Badge
-                        variant={isUp ? "bullish" : "bearish"}
-                        className="text-xs"
+                        variant={isUp ? "bullish" : isDown ? "bearish" : "default"}
+                        className={cn("text-xs", isHold && "text-muted-foreground bg-muted")}
                       >
                         {pred.direction}
                       </Badge>
@@ -81,7 +83,10 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
                             initial={{ width: 0 }}
                             animate={{ width: `${confidence}%` }}
                             transition={{ duration: 0.5, delay: i * 0.02 }}
-                            className={cn("h-full", isUp ? "bg-up" : "bg-down")}
+                            className={cn(
+                              "h-full",
+                              isUp ? "bg-up" : isDown ? "bg-down" : "bg-muted-foreground/50"
+                            )}
                           />
                         </div>
                         <span className="text-xs font-mono font-medium">
@@ -107,9 +112,11 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {pred.actual_return !== null &&
-                      pred.actual_return !== undefined &&
-                      !isNaN(pred.actual_return) ? (
+                      {isHold ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : pred.actual_return !== null &&
+                        pred.actual_return !== undefined &&
+                        !isNaN(pred.actual_return) ? (
                         <span
                           className={cn(
                             "text-xs font-mono font-semibold",
@@ -124,8 +131,10 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {pred.was_correct === null ||
-                      pred.was_correct === undefined ? (
+                      {isHold ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : pred.was_correct === null ||
+                        pred.was_correct === undefined ? (
                         <span className="text-xs text-muted-foreground">—</span>
                       ) : pred.was_correct === true ? (
                         <CheckCircle2 className="h-4 w-4 text-up inline" />
