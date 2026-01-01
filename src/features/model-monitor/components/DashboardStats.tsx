@@ -28,14 +28,25 @@ export function DashboardStats({
         value={
           accuracyLoading
             ? "..."
-            : accuracyStats?.accuracy
+            : accuracyStats && accuracyStats.total_predictions > 0
               ? `${(accuracyStats.accuracy * 100).toFixed(1)}%`
-              : "..."
+              : tradingStats
+                ? `${tradingStats.win_rate.toFixed(1)}%`
+                : "..."
         }
-        subtitle={`${accuracyStats?.total_predictions || 0} predictions`}
+        subtitle={
+          accuracyStats && accuracyStats.total_predictions > 0
+            ? `${accuracyStats.total_predictions} predictions`
+            : tradingStats
+              ? `${tradingStats.total_trades} predictions`
+              : "0 predictions"
+        }
         icon={Target}
         trend={
-          accuracyStats?.accuracy && accuracyStats.accuracy > 0.7 ? "up" : "neutral"
+          (accuracyStats?.accuracy && accuracyStats.accuracy > 0.7) ||
+          (tradingStats?.win_rate && tradingStats.win_rate > 70)
+            ? "up"
+            : "neutral"
         }
       />
       <StatCard

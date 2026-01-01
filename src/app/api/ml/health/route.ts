@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       headers: {
         "X-API-Key": ML_API_KEY,
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {

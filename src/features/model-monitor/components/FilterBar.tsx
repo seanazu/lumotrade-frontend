@@ -34,7 +34,7 @@ export function FilterBar({
             placeholder="Search by ticker or date..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 rounded-md border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full h-9 pl-10 pr-3 rounded-md border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 

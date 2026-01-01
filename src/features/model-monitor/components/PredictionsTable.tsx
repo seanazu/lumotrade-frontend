@@ -85,7 +85,7 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
                             transition={{ duration: 0.5, delay: i * 0.02 }}
                             className={cn(
                               "h-full",
-                              isUp ? "bg-up" : isDown ? "bg-down" : "bg-muted-foreground/50"
+                              isUp ? "bg-up" : isDown ? "bg-down" : "bg-muted-foreground"
                             )}
                           />
                         </div>
