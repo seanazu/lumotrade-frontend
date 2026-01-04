@@ -1,5 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+/**
+ * useAlpaca Hook
+ *
+ * Custom React hook for managing Alpaca broker integration.
+ * Handles connection, account data fetching, and disconnection.
+ *
+ * Features:
+ * - Automatic reconnection on mount
+ * - Real-time data updates (10s interval)
+ * - Optimistic updates
+ * - Error handling
+ *
+ * @param userId - User's unique ID from authentication
+ * @returns Object containing broker status, account data, positions, orders, and control functions
+ *
+ * @example
+ * const { status, account, positions, connect, disconnect } = useAlpaca(user.id);
+ */
+
 export interface AlpacaCredentials {
   userId: string;
   apiKey: string;

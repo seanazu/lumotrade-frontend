@@ -81,6 +81,13 @@ export function AlpacaDashboard() {
   const handleToggleAutoTrading = async () => {
     if (!user?.id) return;
 
+    const newState = !autoTradingEnabled;
+    const confirmMessage = newState
+      ? "Enable automated trading? The bot will execute real trades on your Alpaca account based on model predictions."
+      : "Disable automated trading? Future model predictions will not execute trades on your Alpaca account.";
+
+    if (!confirm(confirmMessage)) return;
+
     setIsTogglingAutoTrading(true);
     try {
       const res = await fetch("/api/broker/auto-trading", {
@@ -88,16 +95,27 @@ export function AlpacaDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
-          enabled: !autoTradingEnabled,
+          enabled: newState,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to toggle auto-trading");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to toggle auto-trading");
+      }
 
-      setAutoTradingEnabled(!autoTradingEnabled);
-    } catch (err) {
+      setAutoTradingEnabled(newState);
+
+      // Show success feedback
+      const successMessage = newState
+        ? "✅ Auto-trading enabled! Trades will execute automatically."
+        : "✅ Auto-trading disabled. No automatic trades will be placed.";
+      alert(successMessage);
+    } catch (err: any) {
       console.error("Auto-trading toggle error:", err);
-      alert("Failed to toggle auto-trading");
+      alert(
+        `Failed to ${newState ? "enable" : "disable"} auto-trading: ${err.message}`
+      );
     } finally {
       setIsTogglingAutoTrading(false);
     }

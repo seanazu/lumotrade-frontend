@@ -17,13 +17,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Debug logging
-    console.log("[Broker Connect] ML_BACKEND_URL:", ML_BACKEND_URL);
-    console.log(
-      "[Broker Connect] ML_API_KEY:",
-      ML_API_KEY ? `${ML_API_KEY.substring(0, 10)}...` : "MISSING"
-    );
-
     // Forward to ML backend (credentials will be encrypted there)
     const response = await fetch(`${ML_BACKEND_URL}/api/broker/connect`, {
       method: "POST",
