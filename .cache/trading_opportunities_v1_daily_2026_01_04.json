@@ -1,0 +1,74 @@
+{
+  "cacheKey": "trading:opportunities:v1",
+  "scope": "daily:2026-01-04",
+  "payload": {
+    "opportunities": [
+      {
+        "symbol": "SKYT",
+        "name": "SkyWater Technology, Inc.",
+        "setupType": "momentum_breakout",
+        "entry": {
+          "price": 22.4,
+          "range": {
+            "min": 22.18,
+            "max": 22.62
+          }
+        },
+        "target": {
+          "price": 28.9,
+          "percentage": 29
+        },
+        "stopLoss": {
+          "price": 20.85,
+          "percentage": 6.9
+        },
+        "riskReward": 4.2,
+        "winRate": 63,
+        "timeframe": "2-8 weeks",
+        "reasoning": "STRUCTURAL CATALYST (3x–10x potential): SKYT is one of the few US-based specialty foundry/advanced packaging plays that can directly monetize the onshoring + defense/secure silicon buildout. The structural catalyst is the market re-rating that occurs when a niche foundry transitions from “small-cap semiconductor services” to “strategic domestic capacity” (DoD/critical infrastructure + AI edge + secure supply chain). In this tape (range-bound SPY, low VIX), the market pays for scarcity + strategic value; domestic foundry capacity is scarce. If SKYT continues landing higher-value programs (secure/defense, rad-hard, advanced nodes/packaging partnerships), the multiple expansion can be nonlinear—this is the same ‘structural scarcity’ dynamic that creates multi-baggers in infrastructure bottlenecks.\n\nSMART MONEY CONFIRMATION: Your screen shows strong analyst support (10 BUY / 2 HOLD / 0 SELL) and a clear demand shock today (+23.5% on 3.4x volume). While you don’t show insider buys, the combination of (a) broad Street sponsorship and (b) volume expansion after a neutral trend is the classic institutional “positioning day” signature—especially when it follows upgrades/news clusters. This is the best ‘institutional permission slip’ in the list besides SOC, but SKYT has the stronger secular tailwind.\n\nSECTOR TAILWIND: Semis are still the highest-beta way to express AI infrastructure, but the next leg is increasingly about supply chain sovereignty, secure manufacturing, and packaging/heterogeneous integration. That tailwind is multi-year and not dependent on a single product cycle.\n\nWHY NOW (TIMING): The stock is transitioning from neutral to trend resumption: big green candle + multi-x volume is often the start of a new leg if it holds above the breakout pivot for 2–3 sessions. In a range-bound market, you want idiosyncratic catalysts with volume confirmation—SKYT fits.\n\nTARGET JUSTIFICATION: Conservative target (~$28.90) maps to a logical prior supply/round-number magnet after a breakout leg (roughly +1 ATR expansion continuation). Aggressive upside (not listed as the primary target field) is $34–$45 (+50% to +100%) if it builds a base above ~$24 and institutions keep pressing; that would be consistent with small-cap semi re-ratings when ‘strategic capacity’ narratives take hold.\n\nWHY BETTER THAN OTHER CANDIDATES: Compared with SRFM/SCWO (earlier-stage, thinner liquidity/volume quality) and IRWD (biopharma value trap risk + bearish analyst skew), SKYT has the cleanest combination of (1) structural scarcity narrative, (2) strong Street sponsorship, and (3) breakout-quality volume without being obviously parabolic on your data.",
+        "probability": 69,
+        "confidence": 82
+      },
+      {
+        "symbol": "SOC",
+        "name": "Sable Offshore Corp",
+        "setupType": "swing_trade",
+        "entry": {
+          "price": 11.7,
+          "range": {
+            "min": 11.58,
+            "max": 11.82
+          }
+        },
+        "target": {
+          "price": 15.1,
+          "percentage": 29
+        },
+        "stopLoss": {
+          "price": 10.65,
+          "percentage": 9
+        },
+        "riskReward": 3.2,
+        "winRate": 58,
+        "timeframe": "1-6 weeks",
+        "reasoning": "STRUCTURAL CATALYST (3x–10x potential): SOC is a classic “asset re-rating” setup in Energy—exactly where your regime data says money is rotating (Utilities/Energy/Materials). The structural catalyst here is not ‘oil up/down’; it’s the market re-pricing a newly public/restructured offshore asset platform once production visibility, regulatory milestones, and cash-flow normalization become legible. Offshore names can move in step-functions when the market transitions from uncertainty (permits, restart timelines, capex unknowns) to underwriting stable production + free cash flow. That’s how you get multi-bagger behavior in small/mid-cap Energy: the equity goes from ‘option on execution’ to ‘cash-flowing asset with scarcity value.’\n\nSMART MONEY CONFIRMATION: Analyst stack is extremely supportive (8 BUY / 1 HOLD / 0 SELL) and today’s move is a clear institutional footprint (+30% on 20x volume). Even without insider buys in your feed, 20x volume is the strongest “someone is building a position” signal on the entire list. In a neutral sentiment market with low VIX, that kind of volume spike is rarely retail-only.\n\nSECTOR TAILWIND: Energy is hot right now per your context. In range-bound indices, capital often hides in cash-flow/real-asset stories, and offshore production leverage can outperform when the tape is choppy.\n\nWHY NOW (TIMING): SOC is coming out of a neutral trend with a violent expansion day. The correct way to trade these is not to chase the high tick; it’s to enter near the post-spike pivot and define risk under the first meaningful support. Your entry zone is set to participate if it holds the breakout area rather than mean-reverting all the way back.\n\nTARGET JUSTIFICATION: Conservative target (~$15.10) is a measured move from the breakout thrust (+~29%), consistent with first-leg continuation after a high-volume repricing day. Aggressive upside (not listed as the primary target field) is $17.50–$23 (+50% to +100%) if follow-through volume persists and the market starts valuing SOC on forward cash flow rather than uncertainty discount.\n\nWHY BETTER THAN OTHER CANDIDATES: SOC has the cleanest alignment with current sector rotation (Energy) plus the single strongest volume confirmation (20x). SRFM has insider buying but is more speculative and less aligned with the current ‘hot sector’ tape. SCWO has insider buys but weak volume (0.2x) which is the opposite of what you want for a near-term breakout in a range-bound market.",
+        "probability": 63,
+        "confidence": 78
+      }
+    ],
+    "marketContext": {
+      "regime": "range_bound",
+      "sentiment": "neutral",
+      "vixLevel": 14.51,
+      "spyPerformance": 0.18331,
+      "topSectors": [
+        "Utilities",
+        "Energy",
+        "Materials"
+      ]
+    }
+  },
+  "expiresAt": null,
+  "createdAt": "2026-01-04T14:24:06.392Z",
+  "updatedAt": "2026-01-04T14:24:06.392Z"
+}

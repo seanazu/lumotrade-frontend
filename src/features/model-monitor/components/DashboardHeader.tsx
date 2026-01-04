@@ -1,7 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Brain, RefreshCw, BarChart3, Target, TrendingUpDown, Wallet } from "lucide-react";
+import {
+  Brain,
+  RefreshCw,
+  BarChart3,
+  Target,
+  TrendingUpDown,
+  Wallet,
+} from "lucide-react";
 import { Button } from "@/components/design-system/atoms/Button";
 import { cn } from "@/lib/utils";
 import type { TabId } from "../types";
@@ -28,7 +35,10 @@ interface DashboardHeaderProps {
  * DashboardHeader Component
  * Header with branding, status, and tab navigation
  */
-export function DashboardHeader({ activeTab, onTabChange }: DashboardHeaderProps) {
+export function DashboardHeader({
+  activeTab,
+  onTabChange,
+}: DashboardHeaderProps) {
   return (
     <div className="relative border-b border-border/50 bg-gradient-to-br from-primary/5 via-background to-background">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
@@ -47,7 +57,9 @@ export function DashboardHeader({ activeTab, onTabChange }: DashboardHeaderProps
               </div>
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">AI Trading System</h1>
+              <h1 className="text-xl font-bold tracking-tight">
+                AI Trading System
+              </h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <div className="h-1.5 w-1.5 bg-up rounded-full animate-pulse" />
@@ -93,4 +105,3 @@ export function DashboardHeader({ activeTab, onTabChange }: DashboardHeaderProps
 }
 
 DashboardHeader.displayName = "DashboardHeader";
-

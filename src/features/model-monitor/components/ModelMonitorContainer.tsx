@@ -13,7 +13,7 @@ import { DashboardHeader } from "./DashboardHeader";
 import { DashboardContent } from "./DashboardContent";
 import { PredictionsTab } from "./PredictionsTab";
 import { TradesTab } from "./TradesTab";
-import { AlpacaTab } from "./AlpacaTab";
+import { AlpacaIntegration } from "./alpaca/AlpacaIntegration";
 import type { TabId } from "../types";
 
 /**
@@ -24,11 +24,16 @@ import type { TabId } from "../types";
 export function ModelMonitorContainer() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Get initial tab from URL, default to "dashboard"
   const getTabFromUrl = (): TabId => {
     const tabParam = searchParams.get("tab");
-    if (tabParam === "predictions" || tabParam === "trades" || tabParam === "dashboard" || tabParam === "alpaca") {
+    if (
+      tabParam === "predictions" ||
+      tabParam === "trades" ||
+      tabParam === "dashboard" ||
+      tabParam === "alpaca"
+    ) {
       return tabParam;
     }
     return "dashboard";
@@ -93,14 +98,7 @@ export function ModelMonitorContainer() {
   );
 
   // Fetch full stats for dashboard (300 days to get all trades)
-  const { data: fullStatsData } = useTrades(
-    300,
-    1,
-    1,
-    "",
-    "all",
-    "all"
-  );
+  const { data: fullStatsData } = useTrades(300, 1, 1, "", "all", "all");
 
   const predictions = historyData?.predictions || [];
   const trades = tradesData?.trades || [];
@@ -242,7 +240,9 @@ export function ModelMonitorContainer() {
             />
           )}
 
-          {activeTab === "alpaca" && <AlpacaTab />}
+          {activeTab === "alpaca" && (
+            <AlpacaIntegration key="alpaca-integration" />
+          )}
         </AnimatePresence>
       </div>
     </div>
@@ -250,4 +250,3 @@ export function ModelMonitorContainer() {
 }
 
 ModelMonitorContainer.displayName = "ModelMonitorContainer";
-

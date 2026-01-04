@@ -14,6 +14,7 @@
     "@auth/core": "^0.34.3",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
+    "@hookform/resolvers": "^5.2.2",
     "@instantdb/react": "^0.22.96",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-dialog": "^1.1.2",
@@ -46,6 +47,7 @@
     "pg": "^8.16.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hook-form": "^7.70.0",
     "recharts": "^2.15.4",
     "regression": "^2.0.1",
     "resend": "^6.5.0",
@@ -53,6 +55,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "technicalindicators": "^3.1.0",
+    "zod": "^4.3.5",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
