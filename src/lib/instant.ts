@@ -90,6 +90,16 @@ type Schema = {
     createdAt: number;
     updatedAt: number;
   };
+  // Alpaca brokerage accounts
+  alpacaAccounts: {
+    id: string;
+    userId: string;
+    apiKey: string;
+    secretKey: string; // Encrypted
+    isPaper: boolean;
+    connectedAt: number;
+    lastSynced?: number;
+  };
 };
 
 // Initialize InstantDB

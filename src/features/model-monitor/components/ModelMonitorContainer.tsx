@@ -13,6 +13,7 @@ import { DashboardHeader } from "./DashboardHeader";
 import { DashboardContent } from "./DashboardContent";
 import { PredictionsTab } from "./PredictionsTab";
 import { TradesTab } from "./TradesTab";
+import { AlpacaTab } from "./AlpacaTab";
 import type { TabId } from "../types";
 
 /**
@@ -27,7 +28,7 @@ export function ModelMonitorContainer() {
   // Get initial tab from URL, default to "dashboard"
   const getTabFromUrl = (): TabId => {
     const tabParam = searchParams.get("tab");
-    if (tabParam === "predictions" || tabParam === "trades" || tabParam === "dashboard") {
+    if (tabParam === "predictions" || tabParam === "trades" || tabParam === "dashboard" || tabParam === "alpaca") {
       return tabParam;
     }
     return "dashboard";
@@ -240,6 +241,8 @@ export function ModelMonitorContainer() {
               }}
             />
           )}
+
+          {activeTab === "alpaca" && <AlpacaTab />}
         </AnimatePresence>
       </div>
     </div>

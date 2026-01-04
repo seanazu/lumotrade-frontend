@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Brain, RefreshCw, BarChart3, Target, TrendingUpDown } from "lucide-react";
+import { Brain, RefreshCw, BarChart3, Target, TrendingUpDown, Wallet } from "lucide-react";
 import { Button } from "@/components/design-system/atoms/Button";
 import { cn } from "@/lib/utils";
 import type { TabId } from "../types";
@@ -16,6 +16,7 @@ const TABS: Tab[] = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "predictions", label: "Predictions", icon: Target },
   { id: "trades", label: "Trades", icon: TrendingUpDown },
+  { id: "alpaca", label: "Account", icon: Wallet },
 ];
 
 interface DashboardHeaderProps {

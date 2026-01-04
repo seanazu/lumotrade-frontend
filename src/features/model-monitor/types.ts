@@ -62,4 +62,4 @@ export interface Trade {
   status: "OPEN" | "CLOSED";
 }
 
-export type TabId = "dashboard" | "predictions" | "trades";
+export type TabId = "dashboard" | "predictions" | "trades" | "alpaca";
