@@ -161,18 +161,20 @@ export function AIPredictionsSection() {
               <Sparkles className="h-4 w-4 text-primary" />
               <div>
                 <p className="text-xs text-muted-foreground">
-                  Total Predictions
+                  Trade Signals
                 </p>
                 <p className="text-lg font-bold font-mono">
                   {accuracyStats.total_predictions}
                 </p>
               </div>
             </div>
-            <div className="ml-auto">
-              <Badge variant="default" className="text-xs">
-                72-73% Accuracy
-              </Badge>
-            </div>
+            {accuracyStats.wins !== undefined && accuracyStats.losses !== undefined && (
+              <div className="ml-auto">
+                <Badge variant="default" className="text-xs">
+                  {accuracyStats.wins}W / {accuracyStats.losses}L
+                </Badge>
+              </div>
+            )}
           </motion.div>
         )}
 

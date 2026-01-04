@@ -80,14 +80,16 @@ export interface ModelStatus {
 }
 
 export interface AccuracyStats {
-  accuracy: number;
+  accuracy: number; // Accuracy of should_trade=true predictions only
   total_predictions: number;
   correct_predictions: number;
   accuracy_last_30_days: number;
   sharpe_ratio: number | null;
   total_return: number;
   trade_count: number;
-  win_rate: number;
+  win_rate: number; // Win rate of actual closed trades
+  wins?: number;
+  losses?: number;
   avg_confidence: number;
   last_updated: string;
   // Old fields for compatibility
@@ -333,14 +335,15 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
 
   // If health is null, use predictions-based stats
   if (!health || Object.keys(health).length === 0) {
-    // Get recent predictions to calculate stats
-    const predsRes = await fetch(`/api/ml/predictions?days=30`);
+    // Get recent predictions to calculate stats - ONLY for should_trade=true predictions
+    const predsRes = await fetch(`/api/ml/predictions?days=30&should_trade=true`);
 
     if (predsRes.ok) {
       const predsData = await predsRes.json();
       const preds = predsData.predictions || [];
+      // Filter to only tradeable predictions with results
       const withResults = preds.filter(
-        (p: any) => p.actual_return !== null && p.was_correct !== null
+        (p: any) => p.should_trade && p.actual_return !== null && p.was_correct !== null
       );
       const correct = withResults.filter((p: any) => p.was_correct);
 
@@ -353,7 +356,7 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
           withResults.length > 0 ? correct.length / withResults.length : 0,
         sharpe_ratio: 7.14, // From historical validation
         total_return: account.total_pnl_pct || 0,
-        trade_count: withResults.length, // This is prediction count, will be fixed when health endpoint works
+        trade_count: withResults.length,
         win_rate:
           withResults.length > 0 ? correct.length / withResults.length : 0,
         avg_confidence: 0.7,
@@ -363,7 +366,7 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
   }
 
   return {
-    accuracy: health.accuracy || 0,
+    accuracy: health.accuracy || 0, // Accuracy of should_trade=true predictions
     total_predictions: health.total_predictions || 0,
     correct_predictions: Math.round(
       (health.accuracy || 0) * (health.total_predictions || 0)
@@ -371,8 +374,10 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
     accuracy_last_30_days: health.accuracy || 0,
     sharpe_ratio: health.sharpe_ratio || null,
     total_return: account.total_pnl_pct || 0,
-    trade_count: health.trade_signals || 0, // Number of tradeable signals
-    win_rate: health.accuracy || 0, // Use prediction accuracy as win rate proxy
+    trade_count: health.total_trades || health.trade_signals || 0, // Actual number of trades
+    win_rate: health.win_rate || health.accuracy || 0, // Trade win rate from actual trades
+    wins: health.wins || 0,
+    losses: health.losses || 0,
     avg_confidence: health.avg_confidence || 0.7,
     last_updated: health.check_date || new Date().toISOString(),
   };

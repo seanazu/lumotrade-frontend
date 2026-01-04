@@ -36,10 +36,10 @@ export function DashboardStats({
         }
         subtitle={
           accuracyStats && accuracyStats.total_predictions > 0
-            ? `${accuracyStats.total_predictions} predictions`
+            ? `${accuracyStats.total_predictions} trade signals`
             : tradingStats
-              ? `${tradingStats.total_trades} predictions`
-              : "0 predictions"
+              ? `${tradingStats.total_trades} trade signals`
+              : "0 trade signals"
         }
         icon={Target}
         trend={
