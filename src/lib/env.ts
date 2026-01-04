@@ -25,9 +25,9 @@ export const CRON_SECRET = process.env.CRON_SECRET || ""; // Required in product
 // SERVER-ONLY Backend URLs (Proxied through Next.js API routes)
 // ============================================================================
 
-export const ML_BACKEND_URL =
-  process.env.ML_BACKEND_URL || "http://localhost:5001";
-export const ML_API_KEY = process.env.ML_API_KEY || "";
+// ML Backend Configuration
+export const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8080";
+export const ML_API_KEY = process.env.ML_API_KEY || "dev_key";
 
 // ============================================================================
 // CLIENT-ACCESSIBLE Variables (Exposed to browser with NEXT_PUBLIC_ prefix)

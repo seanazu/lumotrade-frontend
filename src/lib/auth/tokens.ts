@@ -202,3 +202,4 @@ export function getUserFromToken(): { userId: string; email: string } | null {
     email: decoded.email,
   };
 }
+

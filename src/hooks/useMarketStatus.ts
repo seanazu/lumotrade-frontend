@@ -70,3 +70,4 @@ export function useMarketStatus() {
     retryDelay: 2000,
   });
 }
+

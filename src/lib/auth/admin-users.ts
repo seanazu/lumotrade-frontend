@@ -40,3 +40,4 @@ export function getUserRole(email: string): "admin" | "user" | null {
   );
   return user?.role || null;
 }
+
