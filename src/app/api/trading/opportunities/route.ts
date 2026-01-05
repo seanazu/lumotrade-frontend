@@ -18,14 +18,17 @@ export async function GET(request: NextRequest) {
   console.log("🚀 Trading opportunities API called (fetching from ML backend)");
   
   try {
-    const mlBackendUrl = process.env.ML_BACKEND_URL || "https://lumotrade-ml-backend-995037988776.us-central1.run.app";
-    const mlApiKey = process.env.ML_API_KEY; // Use existing ML_API_KEY convention
+    const mlBackendUrl = process.env.ML_BACKEND_URL;
+    const mlApiKey = process.env.ML_API_KEY;
     
-    if (!mlApiKey) {
-      console.error("❌ ML Backend API key not configured");
+    if (!mlBackendUrl || !mlApiKey) {
+      console.error("❌ ML Backend not configured:", { 
+        hasUrl: !!mlBackendUrl, 
+        hasKey: !!mlApiKey 
+      });
       return NextResponse.json(
         { 
-          error: "ML Backend not configured",
+          error: "ML Backend not configured. Please set ML_BACKEND_URL and ML_API_KEY environment variables.",
           opportunities: [],
           marketContext: null,
         },
