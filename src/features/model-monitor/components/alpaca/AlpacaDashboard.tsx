@@ -335,7 +335,7 @@ export function AlpacaDashboard() {
             </Badge>
           </div>
 
-          <Card className="overflow-hidden border-border/50">
+          <Card className="overflow-hidden border-border/50 max-h-[600px] overflow-y-auto">
             {isLoadingPositions ? (
               <div className="p-8 space-y-4">
                 <Skeleton className="h-12 w-full" />
