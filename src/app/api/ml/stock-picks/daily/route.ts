@@ -1,0 +1,53 @@
+import { NextRequest, NextResponse } from "next/server";
+
+/**
+ * GET /api/ml/stock-picks/daily
+ * 
+ * Proxy to ML backend for daily stock picks
+ * Fetches from database instead of generating fresh
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const mlBackendUrl = process.env.ML_BACKEND_URL || "https://lumotrade-ml-backend-312910527085.us-central1.run.app";
+    const mlApiKey = process.env.ML_BACKEND_API_KEY;
+    
+    if (!mlApiKey) {
+      return NextResponse.json(
+        { error: "ML Backend API key not configured" },
+        { status: 500 }
+      );
+    }
+    
+    // Call ML backend
+    const response = await fetch(`${mlBackendUrl}/api/stock-picks/daily`, {
+      headers: {
+        "X-API-Key": mlApiKey,
+      },
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("ML Backend error:", error);
+      return NextResponse.json(
+        { error: "Failed to fetch stock picks from ML backend" },
+        { status: response.status }
+      );
+    }
+    
+    const data = await response.json();
+    
+    // Return with caching headers
+    return NextResponse.json(data, {
+      headers: {
+        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=7200",
+      },
+    });
+  } catch (error) {
+    console.error("Error in stock picks proxy:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
