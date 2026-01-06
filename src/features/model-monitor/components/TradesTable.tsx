@@ -50,7 +50,7 @@ export function TradesTable({ trades }: TradesTableProps) {
           <tbody className="divide-y divide-border">
             {trades.length > 0 ? (
               trades.map((trade, i) => {
-                const isLong = trade.direction === "LONG";
+                const isLong = trade.direction === "LONG" || trade.direction === "UP";
                 const isProfitable = (trade.profit_loss || 0) > 0;
                 const isOpen = trade.status === "OPEN";
 
