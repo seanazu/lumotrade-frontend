@@ -426,7 +426,7 @@ export function AlpacaDashboard() {
                 <p>No recent orders.</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/50">
+              <div className="flex flex-col h-96 divide-y divide-border/50">
                 {orders.slice(0, 10).map((order) => (
                   <div
                     key={order.id}
