@@ -173,25 +173,14 @@ async function fetchPrediction(): Promise<Prediction[] | null> {
     date
   )}&page_size=100`;
 
-  console.log("[useMLBackend] Fetching predictions for date:", date);
-  console.log("[useMLBackend] URL:", url);
-
   const res = await fetch(url);
 
   if (!res.ok) {
-    console.error("[useMLBackend] Fetch failed:", res.status, res.statusText);
     throw new Error(`Failed to fetch predictions: ${res.status}`);
   }
 
   const data = await res.json();
   const predictions = data.predictions || [];
-
-  console.log(
-    "[useMLBackend] Received predictions:",
-    predictions.length,
-    "items"
-  );
-  console.log("[useMLBackend] First few predictions:", predictions.slice(0, 3));
 
   if (predictions.length === 0) {
     return [];
