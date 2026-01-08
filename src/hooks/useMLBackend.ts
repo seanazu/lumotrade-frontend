@@ -654,9 +654,17 @@ export function useModelAccuracyStats() {
   return useQuery({
     queryKey: mlQueryKeys.modelAccuracy,
     queryFn: fetchModelAccuracy,
-    staleTime: 60000,
+    staleTime: 30000, // Consider data stale after 30 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds to get latest trade updates
     retry: 2,
   });
+}
+
+/**
+ * Alias for useModelAccuracyStats to match component expectations
+ */
+export function useModelHealth() {
+  return useModelAccuracyStats();
 }
 
 /**

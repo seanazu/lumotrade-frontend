@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/design-system/atoms/Button";
 import { GlassCard } from "@/components/design-system/atoms/GlassCard";
 import { cn } from "@/lib/utils";
-import { useModelHealth } from "@/hooks/useTrades";
+import { useModelHealth } from "@/hooks/useMLBackend";
 
 function StatCard({
   title,

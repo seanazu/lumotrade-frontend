@@ -3,11 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * GET /api/ml/stock-picks/daily
  * 
- * Proxy to ML backend for daily stock picks
+ * Proxy to ML backend for daily INTELLIGENT stock picks
+ * Uses the new GPT-5.2 powered intelligent picker with 8-dimensional scoring
  * Fetches from database instead of generating fresh
  */
 export async function GET(request: NextRequest) {
-  try {
+  try:
     const mlBackendUrl = process.env.ML_BACKEND_URL || "https://lumotrade-ml-backend-312910527085.us-central1.run.app";
     const mlApiKey = process.env.ML_API_KEY; // Use existing ML_API_KEY convention
     
@@ -18,8 +19,8 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Call ML backend
-    const response = await fetch(`${mlBackendUrl}/api/stock-picks/daily`, {
+    // Call ML backend - NOW USING INTELLIGENT PICKS ENDPOINT
+    const response = await fetch(`${mlBackendUrl}/api/stock-picks/intelligent/daily`, {
       headers: {
         "X-API-Key": mlApiKey,
       },
