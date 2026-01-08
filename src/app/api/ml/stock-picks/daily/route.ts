@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Fetches from database instead of generating fresh
  */
 export async function GET(request: NextRequest) {
-  try:
+  try {
     const mlBackendUrl = process.env.ML_BACKEND_URL || "https://lumotrade-ml-backend-312910527085.us-central1.run.app";
     const mlApiKey = process.env.ML_API_KEY; // Use existing ML_API_KEY convention
     
