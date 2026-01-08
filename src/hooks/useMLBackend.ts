@@ -27,8 +27,19 @@ const getEtTradingDateForPredictions = () => {
   if (day === 0) etNow.setDate(etNow.getDate() - 2);
   if (day === 6) etNow.setDate(etNow.getDate() - 1);
 
-  // Always return today's date - let the ML backend decide what to show
-  // The backend will show today's predictions if available, or most recent
+  // Market-hour logic: Show yesterday's predictions before 9:29 AM ET
+  // Predictions are generated at 9:29 AM, so before that show yesterday's validated results
+  const hour = etNow.getHours();
+  const minute = etNow.getMinutes();
+  const isBeforeMarketOpen = hour < 9 || (hour === 9 && minute < 29);
+
+  if (isBeforeMarketOpen && day >= 1 && day <= 5) {
+    // Before 9:29 AM on weekdays → show yesterday's predictions
+    etNow.setDate(etNow.getDate() - 1);
+    // If yesterday was Sunday, go back to Friday
+    if (etNow.getDay() === 0) etNow.setDate(etNow.getDate() - 2);
+  }
+
   return etNow.toISOString().slice(0, 10);
 };
 
