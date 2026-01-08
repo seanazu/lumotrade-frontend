@@ -1,7 +1,7 @@
 /**
  * TanStack Query hooks for ML Backend API
  * All data fetching for the production model
- * 
+ *
  * Note: All requests go through Next.js API proxy routes to keep
  * ML_API_KEY secure on the server side.
  */
@@ -173,21 +173,25 @@ async function fetchPrediction(): Promise<Prediction[] | null> {
     date
   )}&page_size=100`;
 
-  console.log('[useMLBackend] Fetching predictions for date:', date);
-  console.log('[useMLBackend] URL:', url);
+  console.log("[useMLBackend] Fetching predictions for date:", date);
+  console.log("[useMLBackend] URL:", url);
 
   const res = await fetch(url);
 
   if (!res.ok) {
-    console.error('[useMLBackend] Fetch failed:', res.status, res.statusText);
+    console.error("[useMLBackend] Fetch failed:", res.status, res.statusText);
     throw new Error(`Failed to fetch predictions: ${res.status}`);
   }
 
   const data = await res.json();
   const predictions = data.predictions || [];
 
-  console.log('[useMLBackend] Received predictions:', predictions.length, 'items');
-  console.log('[useMLBackend] First few predictions:', predictions.slice(0, 3));
+  console.log(
+    "[useMLBackend] Received predictions:",
+    predictions.length,
+    "items"
+  );
+  console.log("[useMLBackend] First few predictions:", predictions.slice(0, 3));
 
   if (predictions.length === 0) {
     return [];
@@ -268,9 +272,7 @@ async function fetchPredictionHistory(
   if (shouldTrade !== "all") params.append("should_trade", shouldTrade);
   if (result !== "all") params.append("result", result);
 
-  const res = await fetch(
-    `/api/ml/predictions?${params.toString()}`
-  );
+  const res = await fetch(`/api/ml/predictions?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch prediction history");
   const data = await res.json();
 
@@ -301,7 +303,7 @@ async function fetchPredictionHistory(
 }
 
 async function fetchTrainStatus(): Promise<TrainStatus> {
-  const res = await fetch(`${ML_BACKEND_URL}/train/status`);
+  const res = await fetch(`/api/ml/train/status`);
   if (!res.ok) throw new Error("Failed to fetch training status");
   return res.json();
 }
@@ -309,7 +311,7 @@ async function fetchTrainStatus(): Promise<TrainStatus> {
 async function triggerTraining(
   trials: number
 ): Promise<{ status: string; message: string }> {
-  const res = await fetch(`${ML_BACKEND_URL}/train/trigger`, {
+  const res = await fetch(`/api/ml/train/trigger`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ optimize_trials: trials }),
@@ -319,7 +321,7 @@ async function triggerTraining(
 }
 
 async function fetchModelStatus(): Promise<ModelStatus> {
-  const res = await fetch(`${ML_BACKEND_URL}/model/status`);
+  const res = await fetch(`/api/ml/model/status`);
   if (!res.ok) throw new Error("Failed to fetch model status");
   return res.json();
 }
@@ -336,14 +338,17 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
   // If health is null, use predictions-based stats
   if (!health || Object.keys(health).length === 0) {
     // Get recent predictions to calculate stats - ONLY for should_trade=true predictions
-    const predsRes = await fetch(`/api/ml/predictions?days=30&should_trade=true`);
+    const predsRes = await fetch(
+      `/api/ml/predictions?days=30&should_trade=true`
+    );
 
     if (predsRes.ok) {
       const predsData = await predsRes.json();
       const preds = predsData.predictions || [];
       // Filter to only tradeable predictions with results
       const withResults = preds.filter(
-        (p: any) => p.should_trade && p.actual_return !== null && p.was_correct !== null
+        (p: any) =>
+          p.should_trade && p.actual_return !== null && p.was_correct !== null
       );
       const correct = withResults.filter((p: any) => p.was_correct);
 
@@ -384,7 +389,7 @@ async function fetchModelAccuracy(): Promise<AccuracyStats> {
 }
 
 async function fetchTodayAlert(): Promise<Alert> {
-  const res = await fetch(`${ML_BACKEND_URL}/alerts/today`);
+  const res = await fetch(`/api/ml/alerts/today`);
   if (!res.ok) throw new Error("Failed to fetch alert");
   return res.json();
 }
@@ -412,9 +417,7 @@ async function fetchTrades(
   if (direction !== "all") params.append("direction", direction);
 
   try {
-    const res = await fetch(
-      `/api/ml/trades?${params.toString()}`
-    );
+    const res = await fetch(`/api/ml/trades?${params.toString()}`);
 
     if (!res.ok) {
       throw new Error(`Failed to fetch trades: ${res.status}`);
