@@ -64,8 +64,34 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     console.log(`✅ Received ${data.opportunities?.length || 0} intelligent picks from ML backend`);
     
-    // The new endpoint already returns data in the correct format
-    return createResponse(data);
+    // Transform to ensure all fields are present and properly formatted
+    const transformedData = {
+      opportunities: (data.opportunities || []).map((opp: any) => ({
+        symbol: opp.symbol,
+        name: opp.name,
+        setupType: "swing_trade", // All picks are swing trades
+        entry: opp.entry || { price: 0, range: { min: 0, max: 0 } },
+        target: opp.target || { price: 0, percentage: 0 },
+        stopLoss: opp.stopLoss || { price: 0, percentage: 0 },
+        riskReward: opp.riskReward || 2.0,
+        winRate: opp.confidence || 60, // Use confidence as winRate
+        timeframe: opp.timeframe || "2-5 days",
+        reasoning: opp.reasoning || "Trade setup",
+        probability: opp.confidence || 60,
+        confidence: opp.confidence || 60,
+        score: opp.score || 0,
+        scoreBreakdown: opp.scoreBreakdown || {},
+        catalysts: opp.catalysts || [],
+      })),
+      marketContext: data.marketContext || {
+        regime: "NEUTRAL",
+        sentiment: "NEUTRAL",
+        vixLevel: 0,
+        spyPerformance: 0,
+      },
+    };
+    
+    return createResponse(transformedData);
   } catch (error) {
     console.error("❌ Error in trading opportunities endpoint:", error);
     console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
@@ -87,75 +113,6 @@ export async function GET(request: NextRequest) {
 // Helper Functions
 // ============================================================================
 
-/**
- * Transform intelligent picks from ML backend to frontend format
- */
-function transformIntelligentPicks(data: any): any {
-  const picks = data.picks || [];
-  
-  // Transform each pick to opportunity format
-  const opportunities = picks.map((pick: any) => ({
-    symbol: pick.symbol,
-    name: pick.company_name || pick.symbol,
-    setupType: mapSetupType(pick.setup_type),
-    entry: {
-      price: pick.entry_price,
-      range: {
-        min: pick.entry_zone_min || pick.entry_price * 0.99,
-        max: pick.entry_zone_max || pick.entry_price * 1.01,
-      },
-    },
-    target: {
-      price: pick.target_2 || pick.target_1,  // Use target_2 as primary
-      percentage: pick.target_2_percent || pick.target_1_percent || 0,
-    },
-    stopLoss: {
-      price: pick.stop_loss,
-      percentage: Math.abs(pick.stop_loss_percent || 0),
-    },
-    riskReward: pick.risk_reward_ratio || 2.0,
-    winRate: pick.win_probability || pick.ai_confidence || 60,
-    timeframe: pick.timeframe_days || "3-5 days",
-    reasoning: pick.ai_thesis || pick.catalysts?.join(", ") || "Trade setup",
-    probability: pick.win_probability || 60,
-    confidence: pick.ai_confidence || 70,
-  }));
-  
-  // Build market context from the first pick (they all have same regime)
-  const firstPick = picks[0];
-  const marketContext = firstPick ? {
-    regime: firstPick.market_regime || "NEUTRAL",
-    sentiment: firstPick.market_regime || "NEUTRAL",
-    vixLevel: 0,  // Not provided by intelligent picks
-    spyPerformance: 0,  // Not provided by intelligent picks
-    topSectors: firstPick.sector ? [firstPick.sector] : [],
-  } : null;
-  
-  return {
-    opportunities,
-    marketContext,
-  };
-}
-
-/**
- * Map intelligent picker setup types to frontend setup types
- */
-function mapSetupType(setupType: string | undefined): string {
-  if (!setupType) return "swing_trade";
-  
-  const mapping: Record<string, string> = {
-    "BREAKOUT": "momentum_breakout",
-    "BREAKDOWN": "momentum_breakout",
-    "EARNINGS_MOMENTUM": "momentum_breakout",
-    "MEAN_REVERSION": "mean_reversion",
-    "FAILED_BREAKOUT": "mean_reversion",
-    "OPTIONS_FLOW": "options_play",
-    "INSIDER_BUYING": "swing_trade",
-    "SECTOR_ROTATION": "swing_trade",
-  };
-  
-  return mapping[setupType.toUpperCase()] || "swing_trade";
-}
 /**
  * Create standardized API response with caching headers
  */
