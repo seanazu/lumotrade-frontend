@@ -65,10 +65,10 @@ export function useTradingOpportunities() {
       }
       return response.json();
     },
-    // Daily-cached server-side (DB) — avoid long polling / repeated paid calls
-    refetchInterval: false,
-    refetchOnWindowFocus: false,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    // Refresh more frequently during trading hours to get new picks
+    refetchInterval: 5 * 60 * 1000, // 5 minutes during active use
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    staleTime: 10 * 60 * 1000, // 10 minutes (picks are daily but we want fresh data)
     retry: 2,
   });
 }

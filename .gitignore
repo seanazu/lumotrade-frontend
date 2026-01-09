@@ -60,3 +60,4 @@ QUICKSTART*.md
 RESTART*.md
 test_*.py
 
+.env.vercel
