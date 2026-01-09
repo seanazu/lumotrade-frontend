@@ -23,7 +23,7 @@ export function MarketContextDisplay({ context }: MarketContextDisplayProps) {
       <div className="flex items-center justify-between text-[10px] mt-0.5">
         <span className="text-muted-foreground">SENTIMENT:</span>
         <span className={`font-bold ${sentimentColor}`}>
-          {context.sentiment.toUpperCase()}
+          {context.sentiment ? context.sentiment.toUpperCase() : "NEUTRAL"}
         </span>
       </div>
     </div>

@@ -25,7 +25,7 @@ export function OpportunityCard({
   const setupConfig = opp.setupType && SETUP_CONFIGS[opp.setupType] 
     ? SETUP_CONFIGS[opp.setupType]
     : {
-        label: opp.setupType?.toUpperCase() || "OPPORTUNITY",
+        label: opp.setupType ? opp.setupType.toUpperCase() : "OPPORTUNITY",
         icon: "💡",
       };
 

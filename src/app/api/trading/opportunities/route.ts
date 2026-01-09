@@ -16,26 +16,27 @@ const STALE_WHILE_REVALIDATE = 7200; // 2 hours
  */
 export async function GET(request: NextRequest) {
   console.log("🚀 Trading opportunities API called (fetching from ML backend)");
-  
+
   try {
     const mlBackendUrl = process.env.ML_BACKEND_URL;
     const mlApiKey = process.env.ML_API_KEY;
-    
+
     if (!mlBackendUrl || !mlApiKey) {
-      console.error("❌ ML Backend not configured:", { 
-        hasUrl: !!mlBackendUrl, 
-        hasKey: !!mlApiKey 
+      console.error("❌ ML Backend not configured:", {
+        hasUrl: !!mlBackendUrl,
+        hasKey: !!mlApiKey,
       });
       return NextResponse.json(
-        { 
-          error: "ML Backend not configured. Please set ML_BACKEND_URL and ML_API_KEY environment variables.",
+        {
+          error:
+            "ML Backend not configured. Please set ML_BACKEND_URL and ML_API_KEY environment variables.",
           opportunities: [],
           marketContext: null,
         },
         { status: 500 }
       );
     }
-    
+
     // Fetch from ML backend (which reads from database)
     // NOW USING NEW INTELLIGENT PICKS ENDPOINT (8-dimensional scoring with quality thresholds)
     console.log("📡 Fetching intelligent picks from ML backend...");
@@ -44,26 +45,29 @@ export async function GET(request: NextRequest) {
         "X-API-Key": mlApiKey,
       },
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("❌ ML Backend error:", errorText);
-      
+
       // Fallback to empty response
       return NextResponse.json(
-        { 
+        {
           opportunities: [],
           marketContext: null,
-          message: "No picks available. Please run generate_daily_picks.py on the ML backend.",
+          message:
+            "No picks available. Please run generate_daily_picks.py on the ML backend.",
           error: errorText,
         },
         { status: response.status }
       );
     }
-    
+
     const data = await response.json();
-    console.log(`✅ Received ${data.opportunities?.length || 0} intelligent picks from ML backend`);
-    
+    console.log(
+      `✅ Received ${data.opportunities?.length || 0} intelligent picks from ML backend`
+    );
+
     // Transform to ensure all fields are present and properly formatted
     const transformedData = {
       opportunities: (data.opportunities || []).map((opp: any) => ({
@@ -90,13 +94,19 @@ export async function GET(request: NextRequest) {
         spyPerformance: 0,
       },
     };
-    
+
     return createResponse(transformedData);
   } catch (error) {
     console.error("❌ Error in trading opportunities endpoint:", error);
-    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-    console.error("Error message:", error instanceof Error ? error.message : String(error));
-    
+    console.error(
+      "Error stack:",
+      error instanceof Error ? error.stack : "No stack trace"
+    );
+    console.error(
+      "Error message:",
+      error instanceof Error ? error.message : String(error)
+    );
+
     return NextResponse.json(
       {
         error: "Failed to fetch trading opportunities",
