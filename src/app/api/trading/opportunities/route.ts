@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
     }
     
     // Fetch from ML backend (which reads from database)
-    // NOW USING INTELLIGENT PICKS ENDPOINT (GPT-5.2 powered, 8-dimensional scoring)
+    // NOW USING NEW INTELLIGENT PICKS ENDPOINT (8-dimensional scoring with quality thresholds)
     console.log("📡 Fetching intelligent picks from ML backend...");
-    const response = await fetch(`${mlBackendUrl}/api/stock-picks/intelligent/daily`, {
+    const response = await fetch(`${mlBackendUrl}/api/stock-picks/daily`, {
       headers: {
         "X-API-Key": mlApiKey,
       },
@@ -62,12 +62,10 @@ export async function GET(request: NextRequest) {
     }
     
     const data = await response.json();
-    console.log(`✅ Received ${data.picks?.length || 0} intelligent picks from ML backend`);
+    console.log(`✅ Received ${data.opportunities?.length || 0} intelligent picks from ML backend`);
     
-    // Transform intelligent picks to opportunities format
-    const transformedData = transformIntelligentPicks(data);
-    
-    return createResponse(transformedData);
+    // The new endpoint already returns data in the correct format
+    return createResponse(data);
   } catch (error) {
     console.error("❌ Error in trading opportunities endpoint:", error);
     console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
