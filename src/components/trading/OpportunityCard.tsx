@@ -1,5 +1,7 @@
-import { Clock, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { Clock, ArrowRight, Zap } from "lucide-react";
 import { PriceLevelGrid } from "./PriceLevelGrid";
+import { TradingModal } from "./TradingModal";
 import type { TradingOpportunity } from "@/hooks/useTradingOpportunities";
 
 interface OpportunityCardProps {
@@ -22,6 +24,8 @@ export function OpportunityCard({
   isPending,
   onAnalyze,
 }: OpportunityCardProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
   const setupConfig = opp.setupType && SETUP_CONFIGS[opp.setupType] 
     ? SETUP_CONFIGS[opp.setupType]
     : {
@@ -109,19 +113,37 @@ export function OpportunityCard({
             color="text-foreground"
           />
         </div>
-        <button
-          onClick={() => onAnalyze(opp.symbol)}
-          disabled={isPending}
-          className="flex items-center gap-1 px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-lg border border-indigo-500/20 hover:border-indigo-500/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span className="text-[10px] font-bold text-indigo-400">
-            {isPending ? "Loading..." : "Analyze"}
-          </span>
-          {!isPending && (
-            <ArrowRight className="w-3 h-3 text-indigo-400 group-hover:translate-x-0.5 transition-transform" />
-          )}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-lg border border-primary/20 shadow-sm shadow-primary/20 transition-all group"
+          >
+            <Zap className="w-3 h-3 text-primary-foreground" />
+            <span className="text-[10px] font-bold text-primary-foreground">
+              Trade
+            </span>
+          </button>
+          <button
+            onClick={() => onAnalyze(opp.symbol)}
+            disabled={isPending}
+            className="flex items-center gap-1 px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-lg border border-indigo-500/20 hover:border-indigo-500/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="text-[10px] font-bold text-indigo-400">
+              {isPending ? "Loading..." : "Analyze"}
+            </span>
+            {!isPending && (
+              <ArrowRight className="w-3 h-3 text-indigo-400 group-hover:translate-x-0.5 transition-transform" />
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Trading Modal */}
+      <TradingModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        opportunity={opp}
+      />
     </div>
   );
 }
