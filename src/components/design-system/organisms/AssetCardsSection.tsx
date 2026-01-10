@@ -64,6 +64,7 @@ export function AssetCardsSection() {
         {asset.icon}
       </span>
     ),
+    sparklineData: asset.sparklineData, // Pass through sparkline data
   }));
 
   return (

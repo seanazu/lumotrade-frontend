@@ -19,6 +19,7 @@ export interface AssetData {
   changePercent: number;
   icon: string;
   type: "stock" | "crypto" | "forex" | "commodity";
+  sparklineData?: number[];
 }
 
 interface AssetsResponse {
@@ -30,11 +31,35 @@ interface AssetsResponse {
 }
 
 /**
+ * Fetch intraday sparkline data for a symbol
+ * Returns array of prices for the last trading day (1-minute intervals)
+ */
+async function fetchSparklineData(symbol: string): Promise<number[]> {
+  try {
+    // Try FMP intraday endpoint (1min intervals)
+    const intradayData = await fmpClient.getIntradayChart(symbol, "1min");
+    
+    if (intradayData && intradayData.length > 0) {
+      // Get last 30 data points for smoother chart
+      const recent = intradayData.slice(-30);
+      return recent.map((bar: any) => bar.close || bar.price || 0);
+    }
+  } catch (error) {
+    console.error(`Error fetching sparkline for ${symbol}:`, error);
+  }
+  
+  return [];
+}
+
+/**
  * Fetch S&P 500 (SPY ETF)
  */
 async function fetchSPY(): Promise<AssetData | null> {
   try {
-    const quote = await fmpClient.getQuote("SPY");
+    const [quote, sparkline] = await Promise.all([
+      fmpClient.getQuote("SPY"),
+      fetchSparklineData("SPY"),
+    ]);
 
     if (quote) {
       return {
@@ -44,6 +69,7 @@ async function fetchSPY(): Promise<AssetData | null> {
         changePercent: quote.changesPercentage,
         icon: "📊",
         type: "stock",
+        sparklineData: sparkline.length > 0 ? sparkline : undefined,
       };
     }
   } catch (error) {
@@ -59,7 +85,10 @@ async function fetchSPY(): Promise<AssetData | null> {
 async function fetchBitcoin(): Promise<AssetData | null> {
   try {
     // Try FMP first for crypto
-    const quote = await fmpClient.getQuote("BTCUSD");
+    const [quote, sparkline] = await Promise.all([
+      fmpClient.getQuote("BTCUSD"),
+      fetchSparklineData("BTCUSD"),
+    ]);
 
     if (quote) {
       return {
@@ -69,13 +98,14 @@ async function fetchBitcoin(): Promise<AssetData | null> {
         changePercent: quote.changesPercentage,
         icon: "₿",
         type: "crypto",
+        sparklineData: sparkline.length > 0 ? sparkline : undefined,
       };
     }
   } catch (error) {
     console.error("Error fetching BTC from FMP:", error);
   }
 
-  // Try EODHD as fallback
+  // Try EODHD as fallback (without sparkline)
   try {
     if (eodhdClient.isConfigured()) {
       const quote = await eodhdClient.getCryptoQuote("BTC-USD");
@@ -104,7 +134,10 @@ async function fetchBitcoin(): Promise<AssetData | null> {
 async function fetchEURUSD(): Promise<AssetData | null> {
   try {
     // Try FMP first
-    const quote = await fmpClient.getQuote("EURUSD");
+    const [quote, sparkline] = await Promise.all([
+      fmpClient.getQuote("EURUSD"),
+      fetchSparklineData("EURUSD"),
+    ]);
 
     if (quote) {
       return {
@@ -114,13 +147,14 @@ async function fetchEURUSD(): Promise<AssetData | null> {
         changePercent: quote.changesPercentage,
         icon: "€",
         type: "forex",
+        sparklineData: sparkline.length > 0 ? sparkline : undefined,
       };
     }
   } catch (error) {
     console.error("Error fetching EUR/USD from FMP:", error);
   }
 
-  // Try EODHD as fallback
+  // Try EODHD as fallback (without sparkline)
   try {
     if (eodhdClient.isConfigured()) {
       const quote = await eodhdClient.getForexQuote("EURUSD");
@@ -149,7 +183,10 @@ async function fetchEURUSD(): Promise<AssetData | null> {
 async function fetchCrudeOil(): Promise<AssetData | null> {
   try {
     // Try FMP commodities endpoint
-    const quote = await fmpClient.getQuote("CLUSD");
+    const [quote, sparkline] = await Promise.all([
+      fmpClient.getQuote("CLUSD"),
+      fetchSparklineData("CLUSD"),
+    ]);
 
     if (quote) {
       return {
@@ -159,13 +196,14 @@ async function fetchCrudeOil(): Promise<AssetData | null> {
         changePercent: quote.changesPercentage,
         icon: "🛢",
         type: "commodity",
+        sparklineData: sparkline.length > 0 ? sparkline : undefined,
       };
     }
   } catch (error) {
     console.error("Error fetching crude oil from FMP:", error);
   }
 
-  // Try EODHD as fallback
+  // Try EODHD as fallback (without sparkline)
   try {
     if (eodhdClient.isConfigured()) {
       const quote = await eodhdClient.getCommodityQuote("CL");

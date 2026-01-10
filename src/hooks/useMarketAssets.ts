@@ -14,6 +14,7 @@ export interface AssetData {
   changePercent: number;
   icon: string;
   type: "stock" | "crypto" | "forex" | "commodity";
+  sparklineData?: number[]; // Historical price points for sparkline chart
 }
 
 interface AssetsResponse {

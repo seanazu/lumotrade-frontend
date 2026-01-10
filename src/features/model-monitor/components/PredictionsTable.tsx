@@ -50,7 +50,7 @@ export function PredictionsTable({ predictions }: PredictionsTableProps) {
                 const isUp = pred.direction === "UP";
                 const isDown = pred.direction === "DOWN";
                 const isHold = pred.direction === "HOLD";
-                const confidence = Math.round(pred.confidence * 100);
+                const confidence = (pred.confidence * 100).toFixed(1);
 
                 return (
                   <motion.tr
