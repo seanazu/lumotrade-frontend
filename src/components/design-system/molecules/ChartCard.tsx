@@ -36,20 +36,6 @@ export function ChartCard({
           </div>
           <span className="text-[10px] text-muted-foreground">{symbol}</span>
         </div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-sm font-bold text-foreground">
-            ${price.toFixed(2)}
-          </span>
-          <span
-            className={cn(
-              "text-[10px] font-bold",
-              isPositive ? "text-emerald-500" : "text-red-500"
-            )}
-          >
-            {isPositive ? "+" : ""}
-            {changePercent.toFixed(2)}%
-          </span>
-        </div>
       </div>
       <div className="h-64 sm:h-72">
         <TradingViewWidget symbol={symbol} chartType={chartType} />
@@ -57,4 +43,3 @@ export function ChartCard({
     </div>
   );
 }
-

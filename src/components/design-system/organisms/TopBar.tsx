@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -35,6 +35,8 @@ const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   const navItems = [
     { href: "/", label: "Market", icon: TrendingUp },
@@ -42,12 +44,39 @@ const TopBar: React.FC<TopBarProps> = ({
     { href: "/model-monitor", label: "Models", icon: BarChart3 },
   ];
 
+  // Scroll effect - hide on scroll down, show on scroll up
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Show navbar when scrolling up, hide when scrolling down
+      // Always show if at top of page (within 10px)
+      if (currentScrollY < 10) {
+        setIsVisible(true);
+      } else if (currentScrollY < lastScrollY) {
+        // Scrolling up
+        setIsVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 80) {
+        // Scrolling down and past 80px
+        setIsVisible(false);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [lastScrollY]);
+
   return (
     <>
       <motion.header
-        className="sticky top-0 z-50 w-full h-12 border-b border-border/50 bg-background/80 backdrop-blur-xl"
-        initial={{ y: -48 }}
-        animate={{ y: 0 }}
+        className="fixed top-0 z-50 w-full h-12 border-b border-border/50 bg-background/80 backdrop-blur-xl"
+        initial={{ y: 0 }}
+        animate={{ y: isVisible ? 0 : -48 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
         {/* Subtle glow line */}

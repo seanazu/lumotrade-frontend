@@ -51,9 +51,11 @@ export function DashboardStats({
       />
       <StatCard
         title="Account Balance"
-        value={`$${((tradingStats?.current_balance || statusData?.balance || 10000)).toLocaleString()}`}
+        value={`$${(statusData?.balance || 10000).toLocaleString()}`}
         subtitle={
-          tradingStats ? `${(tradingStats.roi * 100).toFixed(1)}% ROI` : "Starting"
+          tradingStats
+            ? `${(tradingStats.roi * 100).toFixed(1)}% ROI`
+            : "Starting"
         }
         icon={DollarSign}
         trend={
@@ -66,7 +68,9 @@ export function DashboardStats({
       />
       <StatCard
         title="Win Rate"
-        value={tradingStats ? `${(tradingStats.win_rate * 100).toFixed(1)}%` : "..."}
+        value={
+          tradingStats ? `${(tradingStats.win_rate * 100).toFixed(1)}%` : "..."
+        }
         subtitle={
           tradingStats
             ? `${tradingStats.winning_trades}W / ${tradingStats.losing_trades}L`
@@ -96,4 +100,3 @@ export function DashboardStats({
 }
 
 DashboardStats.displayName = "DashboardStats";
-
