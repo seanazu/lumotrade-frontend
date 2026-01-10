@@ -48,7 +48,7 @@ const AppShell: FC<AppShellProps> = ({
           {topBarContent}
         </TopBar>
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden pt-12">
           {/* Main content - shifts when chat opens */}
           <main
             className="flex-1 transition-all duration-300 ease-in-out overflow-auto"
