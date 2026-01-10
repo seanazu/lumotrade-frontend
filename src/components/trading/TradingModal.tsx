@@ -33,25 +33,29 @@ export function TradingModal({
 }: TradingModalProps) {
   const [orderType, setOrderType] = useState<OrderType>("limit");
   const [positionSize, setPositionSize] = useState(500);
-  const [customEntryPrice, setCustomEntryPrice] = useState(opp.entry.price);
+  const [customEntryPrice, setCustomEntryPrice] = useState(opp.entry?.price || 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Calculate position metrics
-  const shares = calculateShares(customEntryPrice, opp.stopLoss.price, positionSize);
-  const totalCost = shares * customEntryPrice;
-  const potentialProfit = shares * (opp.target.price - customEntryPrice);
-  const potentialLoss = shares * (customEntryPrice - opp.stopLoss.price);
+  // Calculate position metrics with safe defaults
+  const entryPrice = customEntryPrice || opp.entry?.price || 0;
+  const stopPrice = opp.stopLoss?.price || 0;
+  const targetPrice = opp.target?.price || 0;
+  
+  const shares = calculateShares(entryPrice, stopPrice, positionSize);
+  const totalCost = shares * entryPrice;
+  const potentialProfit = shares * (targetPrice - entryPrice);
+  const potentialLoss = shares * (entryPrice - stopPrice);
   const remainingBalance = accountBalance - totalCost;
   const portfolioAllocation = (totalCost / accountBalance) * 100;
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setCustomEntryPrice(opp.entry.price);
+      setCustomEntryPrice(opp.entry?.price || 0);
       setIsSuccess(false);
     }
-  }, [isOpen, opp.entry.price]);
+  }, [isOpen, opp.entry]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -67,8 +71,8 @@ export function TradingModal({
           qty: shares,
           type: orderType,
           limit_price: orderType === "limit" ? customEntryPrice : undefined,
-          stop_loss: opp.stopLoss.price,
-          take_profit: opp.target.price,
+          stop_loss: stopPrice,
+          take_profit: targetPrice,
         }),
       });
 
@@ -200,8 +204,8 @@ export function TradingModal({
                   <PriceBox
                     icon={TrendingUp}
                     label="Entry"
-                    price={customEntryPrice}
-                    percentage={opp.entry.percentage}
+                    price={entryPrice}
+                    percentage={opp.entry?.percentage || 0}
                     color="text-blue-500"
                     editable={orderType === "limit"}
                     onEdit={setCustomEntryPrice}
@@ -209,15 +213,15 @@ export function TradingModal({
                   <PriceBox
                     icon={Target}
                     label="Target"
-                    price={opp.target.price}
-                    percentage={opp.target.percentage}
+                    price={targetPrice}
+                    percentage={opp.target?.percentage || 0}
                     color="text-green-500"
                   />
                   <PriceBox
                     icon={ShieldAlert}
                     label="Stop Loss"
-                    price={opp.stopLoss.price}
-                    percentage={opp.stopLoss.percentage}
+                    price={stopPrice}
+                    percentage={opp.stopLoss?.percentage || 0}
                     color="text-red-500"
                   />
                 </div>
@@ -267,7 +271,7 @@ export function TradingModal({
                     />
                     <MetricRow
                       label="R:R Ratio"
-                      value={`${opp.riskReward.toFixed(2)}:1`}
+                      value={`${(opp.riskReward || 0).toFixed(2)}:1`}
                     />
                     <MetricRow
                       label="Allocation"
@@ -328,7 +332,7 @@ export function TradingModal({
                     </span>
                     <span className="text-muted-foreground">•</span>
                     <span className="text-muted-foreground">
-                      Confidence: <span className="text-foreground font-medium">{opp.confidence}%</span>
+                      Confidence: <span className="text-foreground font-medium">{opp.confidence || 0}%</span>
                     </span>
                   </div>
                 </div>
@@ -401,6 +405,9 @@ function PriceBox({
   editable,
   onEdit,
 }: PriceBoxProps) {
+  const safePrice = price || 0;
+  const safePercentage = percentage || 0;
+  
   return (
     <div className="bg-muted/50 rounded-xl p-3 border border-border">
       <div className="flex items-center gap-2 mb-2">
@@ -412,19 +419,19 @@ function PriceBox({
       {editable && onEdit ? (
         <input
           type="number"
-          value={price.toFixed(2)}
+          value={safePrice.toFixed(2)}
           onChange={(e) => onEdit(Number(e.target.value))}
           step="0.01"
           className="w-full text-lg font-bold text-foreground bg-background rounded px-2 py-1 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
         />
       ) : (
         <div className="text-lg font-bold text-foreground">
-          ${price.toFixed(2)}
+          ${safePrice.toFixed(2)}
         </div>
       )}
       <div className={`text-xs font-medium ${color} mt-1`}>
-        {percentage > 0 ? "+" : ""}
-        {percentage.toFixed(2)}%
+        {safePercentage > 0 ? "+" : ""}
+        {safePercentage.toFixed(2)}%
       </div>
     </div>
   );
