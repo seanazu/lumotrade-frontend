@@ -24,7 +24,7 @@ export function MarketOverviewContainer() {
 
   return (
     <div className="min-h-screen bg-background relative">
-      <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 relative z-10">
+      <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 relative z-0">
         {/* Page Header */}
         <PageHeader
           title="Market Overview"

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUser } from "@/contexts/UserContext";
 import {
   X,
   TrendingUp,
@@ -49,10 +51,15 @@ export function TradingModal({
   onClose,
   opportunity: opp,
 }: TradingModalProps) {
+  const { user } = useUser();
   const [orderType, setOrderType] = useState<OrderType>("limit");
-  const [positionSize, setPositionSize] = useState(500);
+  const [numShares, setNumShares] = useState(10);
   const [customEntryPrice, setCustomEntryPrice] = useState(
     opp.entry?.price || 0
+  );
+  const [stopLimitPrice, setStopLimitPrice] = useState(opp.entry?.price || 0);
+  const [stopTriggerPrice, setStopTriggerPrice] = useState(
+    (opp.entry?.price || 0) * 0.98
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -60,27 +67,51 @@ export function TradingModal({
   const [positions, setPositions] = useState<AlpacaPosition[]>([]);
   const [isLoadingAccount, setIsLoadingAccount] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure we're mounted (client-side only for portal)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch account data
   const fetchAccountData = async () => {
+    if (!user?.id) {
+      setAccountError("User not authenticated");
+      return;
+    }
+
     setIsLoadingAccount(true);
     setAccountError(null);
 
     try {
-      const response = await fetch("/api/trading/account");
+      const response = await fetch("/api/broker/account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user.id }),
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch account info");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Account API error:", response.status, errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
       const data = await response.json();
+      console.log("Account API response:", data);
 
-      if (data.success) {
-        setAccount(data.account);
-        setPositions(data.positions);
-      } else {
-        throw new Error(data.error || "Unknown error");
-      }
+      // Backend returns flat object with equity, cash, buyingPower, positions, etc.
+      setAccount({
+        balance: data.cash || 0,
+        buying_power: data.buyingPower || 0,
+        portfolio_value: data.portfolioValue || 0,
+        equity: data.equity || 0,
+        status: data.status || "UNKNOWN",
+        currency: "USD",
+      });
+      setPositions(data.positions || []);
     } catch (error: any) {
       console.error("Failed to fetch account:", error);
       setAccountError(error.message);
@@ -104,7 +135,7 @@ export function TradingModal({
   const targetPrice = opp.target?.price || 0;
   const accountBalance = account?.buying_power || 10000;
 
-  const shares = calculateShares(entryPrice, stopPrice, positionSize);
+  const shares = numShares;
   const totalCost = shares * entryPrice;
   const potentialProfit = shares * (targetPrice - entryPrice);
   const potentialLoss = shares * (entryPrice - stopPrice);
@@ -113,6 +144,9 @@ export function TradingModal({
     ? (totalCost / account.portfolio_value) * 100
     : 0;
 
+  // Calculate max shares based on account balance
+  const maxShares = Math.floor(accountBalance / entryPrice);
+
   // Check if user already has position in this symbol
   const existingPosition = positions.find((p) => p.symbol === opp.symbol);
 
@@ -120,8 +154,53 @@ export function TradingModal({
   useEffect(() => {
     if (isOpen) {
       setCustomEntryPrice(opp.entry?.price || 0);
+      setStopLimitPrice(opp.entry?.price || 0);
+      setStopTriggerPrice((opp.entry?.price || 0) * 0.98);
       setIsSuccess(false);
+      setNumShares(10);
       fetchAccountData();
+
+      // Prevent scrolling and interaction with background
+      const originalOverflow = document.body.style.overflow;
+      const originalPointerEvents = document.body.style.pointerEvents;
+
+      document.body.style.overflow = "hidden";
+      document.body.style.pointerEvents = "none";
+
+      // Add a class to disable all transitions and animations on the body
+      document.body.classList.add("modal-open");
+
+      // Add style to disable hover effects globally AND force all elements behind modal
+      const style = document.createElement("style");
+      style.id = "disable-hover-style";
+      style.textContent = `
+        .modal-open * {
+          pointer-events: none !important;
+        }
+        .modal-open .modal-content,
+        .modal-open .modal-content * {
+          pointer-events: auto !important;
+        }
+        /* Force all iframes, embeds, and potentially high z-index elements behind modal */
+        .modal-open iframe,
+        .modal-open embed,
+        .modal-open object,
+        .modal-open .tradingview-widget-container,
+        .modal-open .tradingview-widget-container__widget {
+          z-index: 0 !important;
+          position: relative !important;
+        }
+      `;
+      document.head.appendChild(style);
+
+      return () => {
+        // Cleanup
+        document.body.style.overflow = originalOverflow;
+        document.body.style.pointerEvents = originalPointerEvents;
+        document.body.classList.remove("modal-open");
+        const styleEl = document.getElementById("disable-hover-style");
+        if (styleEl) styleEl.remove();
+      };
     }
   }, [isOpen, opp.entry]);
 
@@ -138,7 +217,13 @@ export function TradingModal({
           side: "buy",
           qty: shares,
           type: orderType,
-          limit_price: orderType === "limit" ? customEntryPrice : undefined,
+          limit_price:
+            orderType === "limit"
+              ? customEntryPrice
+              : orderType === "stop_limit"
+                ? stopLimitPrice
+                : undefined,
+          stop_price: orderType === "stop_limit" ? stopTriggerPrice : undefined,
           stop_loss: stopPrice,
           take_profit: targetPrice,
         }),
@@ -158,27 +243,30 @@ export function TradingModal({
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Full-screen backdrop with blur */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[9998]"
           />
 
-          {/* Modal */}
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          {/* Modal container */}
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 modal-content">
+            {/* Modal */}
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-background border border-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+              className="relative border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden bg-[#0a0f1a]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Success State */}
@@ -193,73 +281,59 @@ export function TradingModal({
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                   >
-                    <CheckCircle2 className="w-20 h-20 text-green-500 mb-4" />
+                    <CheckCircle2 className="w-16 h-16 text-green-500 mb-3" />
                   </motion.div>
-                  <h3 className="text-2xl font-bold text-foreground mb-2">
+                  <h3 className="text-xl font-bold text-foreground mb-2">
                     Trade Submitted!
                   </h3>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {shares} shares of {opp.symbol}
                   </p>
                 </motion.div>
               )}
 
               {/* Header */}
-              <div className="relative border-b border-border bg-gradient-to-br from-primary/10 to-primary/5 p-6">
+              <div className="relative border-b border-border bg-gradient-to-br from-primary/10 to-primary/5 p-4 flex-shrink-0">
                 <button
                   onClick={onClose}
-                  className="absolute top-4 right-4 p-2 rounded-lg hover:bg-background/50 transition-colors"
+                  className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-background/80 transition-colors z-10"
                 >
-                  <X className="w-5 h-5 text-muted-foreground" />
+                  <X className="w-4 h-4 text-muted-foreground" />
                 </button>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                    <Zap className="w-6 h-6 text-primary" />
+                <div className="flex items-start gap-3 pr-8">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-5 h-5 text-primary" />
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-foreground mb-1">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-semibold text-foreground mb-1">
                       Execute Trade
                     </h2>
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl font-bold text-primary">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xl font-bold text-primary">
                         {opp.symbol}
                       </span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded">
                         {opp.setupType?.toUpperCase() || "SWING TRADE"}
                       </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground mb-1">
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xs text-muted-foreground mb-0.5">
                       Win Rate
                     </div>
-                    <div className="text-2xl font-bold text-green-500">
+                    <div className="text-lg font-bold text-green-500">
                       {opp.winRate}%
                     </div>
                   </div>
                 </div>
-
-                {/* Refresh Account Button */}
-                <button
-                  onClick={fetchAccountData}
-                  disabled={isLoadingAccount}
-                  className="absolute top-4 right-12 p-2 rounded-lg hover:bg-background/50 transition-colors disabled:opacity-50"
-                  title="Refresh account data"
-                >
-                  <RefreshCw
-                    className={`w-4 h-4 text-muted-foreground ${
-                      isLoadingAccount ? "animate-spin" : ""
-                    }`}
-                  />
-                </button>
               </div>
 
               {/* Content */}
-              <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6 space-y-6">
+              <div className="overflow-y-auto flex-1 p-4 space-y-4">
                 {/* Order Type Selection */}
                 <div>
-                  <label className="text-sm font-semibold text-foreground mb-3 block">
+                  <label className="text-xs font-semibold text-foreground mb-2 block">
                     Order Type
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -268,7 +342,7 @@ export function TradingModal({
                         <button
                           key={type}
                           onClick={() => setOrderType(type)}
-                          className={`px-4 py-2.5 rounded-lg border-2 transition-all font-medium text-sm ${
+                          className={`px-3 py-2 rounded-lg border transition-all font-medium text-xs ${
                             orderType === type
                               ? "border-primary bg-primary/10 text-primary"
                               : "border-border hover:border-border/80 text-muted-foreground"
@@ -282,6 +356,46 @@ export function TradingModal({
                     )}
                   </div>
                 </div>
+
+                {/* Stop Limit Inputs - only show when stop_limit is selected */}
+                {orderType === "stop_limit" && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-foreground mb-2 block">
+                        Stop Price (Trigger)
+                      </label>
+                      <input
+                        type="number"
+                        value={stopTriggerPrice.toFixed(2)}
+                        onChange={(e) =>
+                          setStopTriggerPrice(Number(e.target.value))
+                        }
+                        step="0.01"
+                        className="w-full text-sm font-bold text-foreground bg-background rounded-lg px-3 py-2 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Order triggers at this price
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-foreground mb-2 block">
+                        Limit Price
+                      </label>
+                      <input
+                        type="number"
+                        value={stopLimitPrice.toFixed(2)}
+                        onChange={(e) =>
+                          setStopLimitPrice(Number(e.target.value))
+                        }
+                        step="0.01"
+                        className="w-full text-sm font-bold text-foreground bg-background rounded-lg px-3 py-2 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Max price to pay
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Price Levels */}
                 <div className="grid grid-cols-3 gap-3">
@@ -311,32 +425,35 @@ export function TradingModal({
 
                 {/* Position Size Control */}
                 <div>
-                  <label className="text-sm font-semibold text-foreground mb-3 flex items-center justify-between">
-                    <span>Position Size (Risk per Trade)</span>
-                    <span className="text-primary">${positionSize}</span>
+                  <label className="text-xs font-semibold text-foreground mb-2 flex items-center justify-between">
+                    <span>Number of Shares</span>
+                    <span className="text-primary">{numShares} shares</span>
                   </label>
                   <input
                     type="range"
-                    min="100"
-                    max="2000"
-                    step="50"
-                    value={positionSize}
-                    onChange={(e) => setPositionSize(Number(e.target.value))}
+                    min="1"
+                    max={maxShares || 100}
+                    step="1"
+                    value={numShares}
+                    onChange={(e) => setNumShares(Number(e.target.value))}
                     className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>$100</span>
-                    <span>$2000</span>
+                    <span>1 share</span>
+                    <span>{maxShares || 100} shares</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 text-center">
+                    Total: ${totalCost.toFixed(2)}
                   </div>
                 </div>
 
                 {/* Position Summary */}
-                <div className="bg-muted/50 rounded-xl p-4 space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" />
+                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                  <h3 className="text-xs font-semibold text-foreground flex items-center gap-2">
+                    <BarChart3 className="w-3.5 h-3.5" />
                     Position Summary
                   </h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <MetricRow label="Shares" value={shares.toString()} />
                     <MetricRow
                       label="Total Cost"
@@ -364,17 +481,44 @@ export function TradingModal({
                 </div>
 
                 {/* Account Info */}
-                <div className="bg-gradient-to-br from-primary/5 to-purple-500/5 rounded-xl p-4 border border-primary/20">
+                <div className="bg-gradient-to-br from-primary/5 to-purple-500/5 rounded-lg p-3 border border-primary/20">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" />
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-2">
+                      <DollarSign className="w-3.5 h-3.5" />
                       Account Balance
+                      {accountError && (
+                        <span className="text-[10px] text-yellow-500">
+                          (Using fallback)
+                        </span>
+                      )}
                     </span>
-                    <span className="text-lg font-bold text-foreground">
+                    <button
+                      onClick={fetchAccountData}
+                      disabled={isLoadingAccount}
+                      className="p-1 rounded hover:bg-background/50 transition-colors disabled:opacity-50"
+                      title="Refresh account data"
+                    >
+                      <RefreshCw
+                        className={`w-3 h-3 text-muted-foreground ${
+                          isLoadingAccount ? "animate-spin" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {accountError && (
+                    <div className="text-[10px] text-yellow-600 dark:text-yellow-400 mb-2">
+                      Error: {accountError}. Check console for details.
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground">
+                      Current
+                    </span>
+                    <span className="text-base font-bold text-foreground">
                       ${accountBalance.toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">After Trade</span>
                     <span
                       className={`font-semibold ${
@@ -390,9 +534,9 @@ export function TradingModal({
 
                 {/* Risk Warning */}
                 {portfolioAllocation > 20 && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-yellow-600 dark:text-yellow-400">
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2.5 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-yellow-600 dark:text-yellow-400">
                       <span className="font-semibold">High Risk:</span> This
                       trade represents {portfolioAllocation.toFixed(1)}% of your
                       portfolio. Consider reducing position size.
@@ -401,15 +545,15 @@ export function TradingModal({
                 )}
 
                 {/* Trade Reasoning */}
-                <div className="border border-border rounded-xl p-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                    <Activity className="w-4 h-4" />
+                <div className="border border-border rounded-lg p-3">
+                  <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5" />
                     Trade Thesis
                   </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     {opp.reasoning}
                   </p>
-                  <div className="mt-3 flex items-center gap-4 text-xs">
+                  <div className="mt-2 flex items-center gap-3 text-xs">
                     <span className="text-muted-foreground">
                       Timeframe:{" "}
                       <span className="text-foreground font-medium">
@@ -428,19 +572,19 @@ export function TradingModal({
               </div>
 
               {/* Footer */}
-              <div className="border-t border-border p-6 bg-muted/30">
-                <div className="flex items-center gap-3">
+              <div className="border-t border-border p-4 bg-muted/30 flex-shrink-0">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={onClose}
                     disabled={isSubmitting}
-                    className="flex-1 px-6 py-3 rounded-xl border-2 border-border hover:bg-muted transition-all font-semibold text-foreground disabled:opacity-50"
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-border hover:bg-muted transition-all font-medium text-sm text-foreground disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={isSubmitting || remainingBalance < 0}
-                    className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all font-bold text-primary-foreground shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all font-semibold text-sm text-primary-foreground shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -452,13 +596,13 @@ export function TradingModal({
                             ease: "linear",
                           }}
                         >
-                          <Activity className="w-5 h-5" />
+                          <Activity className="w-4 h-4" />
                         </motion.div>
                         Executing...
                       </>
                     ) : (
                       <>
-                        <Zap className="w-5 h-5" />
+                        <Zap className="w-4 h-4" />
                         Execute Trade
                       </>
                     )}
@@ -476,6 +620,8 @@ export function TradingModal({
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 // Helper Components
@@ -502,9 +648,9 @@ function PriceBox({
   const safePercentage = percentage || 0;
 
   return (
-    <div className="bg-muted/50 rounded-xl p-3 border border-border">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className={`w-4 h-4 ${color}`} />
+    <div className="bg-muted/50 rounded-lg p-2.5 border border-border">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Icon className={`w-3.5 h-3.5 ${color}`} />
         <span className="text-xs font-semibold text-muted-foreground">
           {label}
         </span>
@@ -515,15 +661,15 @@ function PriceBox({
           value={safePrice.toFixed(2)}
           onChange={(e) => onEdit(Number(e.target.value))}
           step="0.01"
-          className="w-full text-lg font-bold text-foreground bg-background rounded px-2 py-1 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full text-base font-bold text-foreground bg-background rounded px-2 py-1 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
         />
       ) : (
-        <div className="text-lg font-bold text-foreground">
+        <div className="text-base font-bold text-foreground">
           ${safePrice.toFixed(2)}
         </div>
       )}
       {percentage !== undefined && (
-        <div className={`text-xs font-medium ${color} mt-1`}>
+        <div className={`text-xs font-medium ${color} mt-0.5`}>
           {safePercentage > 0 ? "+" : ""}
           {safePercentage.toFixed(2)}%
         </div>
@@ -547,14 +693,4 @@ function MetricRow({
       <span className={`text-sm font-bold ${valueColor}`}>{value}</span>
     </div>
   );
-}
-
-function calculateShares(
-  entryPrice: number,
-  stopPrice: number,
-  riskAmount: number
-): number {
-  const riskPerShare = entryPrice - stopPrice;
-  if (riskPerShare <= 0) return 0;
-  return Math.floor(riskAmount / riskPerShare);
 }
