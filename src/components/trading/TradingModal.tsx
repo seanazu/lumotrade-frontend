@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Zap,
   BarChart3,
+  RefreshCw,
 } from "lucide-react";
 import type { TradingOpportunity } from "@/hooks/useTradingOpportunities";
 
@@ -20,7 +21,25 @@ interface TradingModalProps {
   isOpen: boolean;
   onClose: () => void;
   opportunity: TradingOpportunity;
-  accountBalance?: number;
+}
+
+interface AlpacaAccount {
+  balance: number;
+  buying_power: number;
+  portfolio_value: number;
+  equity: number;
+  status: string;
+  currency: string;
+}
+
+interface AlpacaPosition {
+  symbol: string;
+  qty: number;
+  market_value: number;
+  current_price: number;
+  avg_entry_price: number;
+  unrealized_pl: number;
+  unrealized_plpc: number;
 }
 
 type OrderType = "market" | "limit" | "stop_limit";
@@ -29,37 +48,86 @@ export function TradingModal({
   isOpen,
   onClose,
   opportunity: opp,
-  accountBalance = 10000,
 }: TradingModalProps) {
   const [orderType, setOrderType] = useState<OrderType>("limit");
   const [positionSize, setPositionSize] = useState(500);
-  const [customEntryPrice, setCustomEntryPrice] = useState(opp.entry?.price || 0);
+  const [customEntryPrice, setCustomEntryPrice] = useState(
+    opp.entry?.price || 0
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [account, setAccount] = useState<AlpacaAccount | null>(null);
+  const [positions, setPositions] = useState<AlpacaPosition[]>([]);
+  const [isLoadingAccount, setIsLoadingAccount] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+
+  // Fetch account data
+  const fetchAccountData = async () => {
+    setIsLoadingAccount(true);
+    setAccountError(null);
+
+    try {
+      const response = await fetch("/api/trading/account");
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch account info");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAccount(data.account);
+        setPositions(data.positions);
+      } else {
+        throw new Error(data.error || "Unknown error");
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch account:", error);
+      setAccountError(error.message);
+      // Fallback to default values
+      setAccount({
+        balance: 10000,
+        buying_power: 10000,
+        portfolio_value: 10000,
+        equity: 10000,
+        status: "ACTIVE",
+        currency: "USD",
+      });
+    } finally {
+      setIsLoadingAccount(false);
+    }
+  };
 
   // Calculate position metrics with safe defaults
   const entryPrice = customEntryPrice || opp.entry?.price || 0;
   const stopPrice = opp.stopLoss?.price || 0;
   const targetPrice = opp.target?.price || 0;
-  
+  const accountBalance = account?.buying_power || 10000;
+
   const shares = calculateShares(entryPrice, stopPrice, positionSize);
   const totalCost = shares * entryPrice;
   const potentialProfit = shares * (targetPrice - entryPrice);
   const potentialLoss = shares * (entryPrice - stopPrice);
   const remainingBalance = accountBalance - totalCost;
-  const portfolioAllocation = (totalCost / accountBalance) * 100;
+  const portfolioAllocation = account
+    ? (totalCost / account.portfolio_value) * 100
+    : 0;
 
-  // Reset state when modal opens
+  // Check if user already has position in this symbol
+  const existingPosition = positions.find((p) => p.symbol === opp.symbol);
+
+  // Reset state when modal opens and fetch account data
   useEffect(() => {
     if (isOpen) {
       setCustomEntryPrice(opp.entry?.price || 0);
       setIsSuccess(false);
+      fetchAccountData();
     }
   }, [isOpen, opp.entry]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
+
     try {
       // Call your Alpaca API endpoint
       const response = await fetch("/api/trading/execute", {
@@ -171,6 +239,20 @@ export function TradingModal({
                     </div>
                   </div>
                 </div>
+
+                {/* Refresh Account Button */}
+                <button
+                  onClick={fetchAccountData}
+                  disabled={isLoadingAccount}
+                  className="absolute top-4 right-12 p-2 rounded-lg hover:bg-background/50 transition-colors disabled:opacity-50"
+                  title="Refresh account data"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 text-muted-foreground ${
+                      isLoadingAccount ? "animate-spin" : ""
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* Content */}
@@ -181,21 +263,23 @@ export function TradingModal({
                     Order Type
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {(["market", "limit", "stop_limit"] as OrderType[]).map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => setOrderType(type)}
-                        className={`px-4 py-2.5 rounded-lg border-2 transition-all font-medium text-sm ${
-                          orderType === type
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border hover:border-border/80 text-muted-foreground"
-                        }`}
-                      >
-                        {type === "market" && "Market"}
-                        {type === "limit" && "Limit"}
-                        {type === "stop_limit" && "Stop Limit"}
-                      </button>
-                    ))}
+                    {(["market", "limit", "stop_limit"] as OrderType[]).map(
+                      (type) => (
+                        <button
+                          key={type}
+                          onClick={() => setOrderType(type)}
+                          className={`px-4 py-2.5 rounded-lg border-2 transition-all font-medium text-sm ${
+                            orderType === type
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border hover:border-border/80 text-muted-foreground"
+                          }`}
+                        >
+                          {type === "market" && "Market"}
+                          {type === "limit" && "Limit"}
+                          {type === "stop_limit" && "Stop Limit"}
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
 
@@ -205,7 +289,6 @@ export function TradingModal({
                     icon={TrendingUp}
                     label="Entry"
                     price={entryPrice}
-                    percentage={opp.entry?.percentage || 0}
                     color="text-blue-500"
                     editable={orderType === "limit"}
                     onEdit={setCustomEntryPrice}
@@ -228,7 +311,7 @@ export function TradingModal({
 
                 {/* Position Size Control */}
                 <div>
-                  <label className="text-sm font-semibold text-foreground mb-3 block flex items-center justify-between">
+                  <label className="text-sm font-semibold text-foreground mb-3 flex items-center justify-between">
                     <span>Position Size (Risk per Trade)</span>
                     <span className="text-primary">${positionSize}</span>
                   </label>
@@ -292,12 +375,12 @@ export function TradingModal({
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      After Trade
-                    </span>
+                    <span className="text-muted-foreground">After Trade</span>
                     <span
                       className={`font-semibold ${
-                        remainingBalance < 0 ? "text-red-500" : "text-foreground"
+                        remainingBalance < 0
+                          ? "text-red-500"
+                          : "text-foreground"
                       }`}
                     >
                       ${remainingBalance.toLocaleString()}
@@ -310,9 +393,9 @@ export function TradingModal({
                   <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex items-start gap-2">
                     <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
                     <div className="text-sm text-yellow-600 dark:text-yellow-400">
-                      <span className="font-semibold">High Risk:</span> This trade
-                      represents {portfolioAllocation.toFixed(1)}% of your portfolio.
-                      Consider reducing position size.
+                      <span className="font-semibold">High Risk:</span> This
+                      trade represents {portfolioAllocation.toFixed(1)}% of your
+                      portfolio. Consider reducing position size.
                     </div>
                   </div>
                 )}
@@ -328,11 +411,17 @@ export function TradingModal({
                   </p>
                   <div className="mt-3 flex items-center gap-4 text-xs">
                     <span className="text-muted-foreground">
-                      Timeframe: <span className="text-foreground font-medium">{opp.timeframe}</span>
+                      Timeframe:{" "}
+                      <span className="text-foreground font-medium">
+                        {opp.timeframe}
+                      </span>
                     </span>
                     <span className="text-muted-foreground">•</span>
                     <span className="text-muted-foreground">
-                      Confidence: <span className="text-foreground font-medium">{opp.confidence || 0}%</span>
+                      Confidence:{" "}
+                      <span className="text-foreground font-medium">
+                        {opp.confidence || 0}%
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -357,7 +446,11 @@ export function TradingModal({
                       <>
                         <motion.div
                           animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          transition={{
+                            duration: 1,
+                            repeat: Infinity,
+                            ease: "linear",
+                          }}
                         >
                           <Activity className="w-5 h-5" />
                         </motion.div>
@@ -390,7 +483,7 @@ interface PriceBoxProps {
   icon: any;
   label: string;
   price: number;
-  percentage: number;
+  percentage?: number;
   color: string;
   editable?: boolean;
   onEdit?: (price: number) => void;
@@ -407,7 +500,7 @@ function PriceBox({
 }: PriceBoxProps) {
   const safePrice = price || 0;
   const safePercentage = percentage || 0;
-  
+
   return (
     <div className="bg-muted/50 rounded-xl p-3 border border-border">
       <div className="flex items-center gap-2 mb-2">
@@ -429,10 +522,12 @@ function PriceBox({
           ${safePrice.toFixed(2)}
         </div>
       )}
-      <div className={`text-xs font-medium ${color} mt-1`}>
-        {safePercentage > 0 ? "+" : ""}
-        {safePercentage.toFixed(2)}%
-      </div>
+      {percentage !== undefined && (
+        <div className={`text-xs font-medium ${color} mt-1`}>
+          {safePercentage > 0 ? "+" : ""}
+          {safePercentage.toFixed(2)}%
+        </div>
+      )}
     </div>
   );
 }
